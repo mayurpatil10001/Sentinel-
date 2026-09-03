@@ -5,6 +5,7 @@ pydantic==2.7.1
 numpy==1.26.4
 pandas==2.2.2
 python-dateutil==2.9.0.post0
+networkx>=3.0
 
 # Phase 1 additions — data ingestion
 requests==2.32.3          # HTTP client for all NSE archive fetches

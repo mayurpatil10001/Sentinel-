@@ -146,11 +146,16 @@ def _normalise_bulk(df: pd.DataFrame, deal_type: str) -> pd.DataFrame:
         "quantity_traded": "quantity",
         "quantity": "quantity",
         "no._of_shares": "quantity",
-        # Price variants
+        # Price variants — NSE uses several spellings across years/file types
         "trade_price/wght._avg._price": "price",
+        "trade_price_/_wght._avg._price": "price",  # after spaces→underscore normalisation
         "weighted_average_trade_price": "price",
         "price": "price",
         "wgt._avg._price": "price",
+        "wgt._avg_price": "price",
+        # Security name (informational, not required)
+        "security_name": "security_name",
+        "security name": "security_name",
     }
     df = df.rename(columns={k: v for k, v in renames.items() if k in df.columns})
 

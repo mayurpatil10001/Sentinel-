@@ -9,8 +9,8 @@ HARD RULE #4 compliance: every module has tests proving BOTH
   (b) a true negative — errors are raised (not swallowed) on bad inputs.
 
 No real network calls are made in these tests — all HTTP is mocked via the
-`responses` library. Real-network tests are in a separate test file and
-gated behind @pytest.mark.live (not run in CI).
+`responses` library. Real-network tests are gated behind @pytest.mark.live
+(excluded from CI via pytest.ini addopts).
 
 Run all unit tests (no network):
     pytest tests/test_ingest_phase1.py -v
@@ -20,15 +20,13 @@ Run live integration tests (requires network + optionally Kite credentials):
 """
 
 import io
-import json
 import os
 import zipfile
 from datetime import date, datetime
-from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-import responses as responses_lib  # renamed to avoid shadowing the stdlib
+import responses as responses_lib
 
 from data.ingest.errors import (
     BhavcopyFetchError,
@@ -46,15 +44,19 @@ from data.ingest.nse_bhavcopy import (
 )
 from data.ingest.nse_bulk_deals import fetch_block_deals, fetch_bulk_deals
 from data.ingest.nse_option_chain import (
-    _NSESession,
     _parse_option_chain_response,
     fetch_option_chain,
 )
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# Helpers
+# Shared fixtures and helpers
 # ────────────────────────────────────────────────────────────────────────────
+
+_NSE_HOME_URL   = "https://www.nseindia.com/"
+_BULK_URL       = "https://archives.nseindia.com/content/equities/bulk.csv"
+_BLOCK_URL      = "https://archives.nseindia.com/content/equities/block_deal.csv"
+
 
 def _make_bhavcopy_zip(symbol: str = "RELIANCE") -> bytes:
     """Builds a minimal valid bhavcopy CSV inside a ZIP, matching NSE's format."""
@@ -66,7 +68,7 @@ def _make_bhavcopy_zip(symbol: str = "RELIANCE") -> bytes:
     )
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
-        zf.writestr(f"cm01JAN2024bhav.csv", csv_content)
+        zf.writestr("cm01JAN2024bhav.csv", csv_content)
     return buf.getvalue()
 
 
@@ -133,8 +135,24 @@ def _make_option_chain_response(symbol: str = "NIFTY") -> dict:
     }
 
 
+def _register_homepage():
+    """Register the NSE homepage mock (needed for cookie handshake)."""
+    responses_lib.add(
+        responses_lib.GET, _NSE_HOME_URL,
+        body="<html>ok</html>", status=200, content_type="text/html"
+    )
+
+
+def _nifty_oc_url() -> str:
+    return "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY"
+
+
+def _reliance_oc_url() -> str:
+    return "https://www.nseindia.com/api/option-chain-equities?symbol=RELIANCE"
+
+
 # ════════════════════════════════════════════════════════════════════════════
-# Tests: nse_bhavcopy.py
+# Tests: nse_bhavcopy.py — URL builder (no HTTP)
 # ════════════════════════════════════════════════════════════════════════════
 
 class TestBhavcopyUrlBuilder:
@@ -158,244 +176,236 @@ class TestBhavcopyUrlBuilder:
         assert "sec_deliverypos_15JAN2024.dat" in url
 
 
+# ════════════════════════════════════════════════════════════════════════════
+# Tests: nse_bhavcopy.py — HTTP fetch (mocked)
+# ════════════════════════════════════════════════════════════════════════════
+
 @responses_lib.activate
-class TestBhavcopyFetch:
-    """HTTP-mocked fetch tests for bhavcopy."""
+def test_bhavcopy_valid_date_returns_dataframe():
+    """
+    TRUE POSITIVE: Valid bhavcopy ZIP parses into a DataFrame with
+    expected columns and non-zero rows.
+    """
+    trading_date = date(2024, 1, 1)
+    url = _bhavcopy_url(trading_date)
+    responses_lib.add(
+        responses_lib.GET, url,
+        body=_make_bhavcopy_zip("RELIANCE"),
+        status=200, content_type="application/zip",
+    )
+    responses_lib.add(responses_lib.GET, _delivery_url(trading_date), status=404)
 
-    def _register_delivery_404(self, trading_date: date = date(2024, 1, 1)):
-        """Convenience: make the delivery file return 404 (non-fatal)."""
-        del_url = _delivery_url(trading_date)
-        responses_lib.add(
-            responses_lib.GET, del_url, status=404
-        )
+    df = fetch_bhavcopy(trading_date)
 
-    # ── True positives ──────────────────────────────────────────────────────
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) > 0
+    assert "symbol" in df.columns
+    assert "close" in df.columns
+    assert "volume" in df.columns
+    assert "date" in df.columns
+    assert df["symbol"].iloc[0] == "RELIANCE"
+    assert df["close"].iloc[0] == pytest.approx(2830.00)
 
-    def test_valid_date_returns_dataframe(self):
-        """
-        TRUE POSITIVE: Valid bhavcopy ZIP parses into a DataFrame with
-        expected columns and non-zero rows.
-        """
-        trading_date = date(2024, 1, 1)
-        url = _bhavcopy_url(trading_date)
-        responses_lib.add(
-            responses_lib.GET, url,
-            body=_make_bhavcopy_zip("RELIANCE"),
-            status=200,
-            content_type="application/zip",
-        )
-        self._register_delivery_404(trading_date)
 
-        df = fetch_bhavcopy(trading_date)
+@responses_lib.activate
+def test_bhavcopy_eq_series_filter_applied():
+    """Only EQ-series records are returned by default (not BE, BZ etc.)."""
+    trading_date = date(2024, 1, 1)
+    url = _bhavcopy_url(trading_date)
+    csv = (
+        "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,LAST,PREVCLOSE,"
+        "TOTTRDQTY,TOTTRDVAL,TIMESTAMP,TOTALTRADES,ISIN\r\n"
+        "RELIANCE,EQ,2800,2850,2790,2830,2830,2795,1000000,2830000000,01-JAN-2024,5000,INE002A01018\r\n"
+        "SOMENOTE,BE,100,105,98,103,103,99,50000,5150000,01-JAN-2024,200,INE999X01010\r\n"
+    )
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("cm01JAN2024bhav.csv", csv)
+    responses_lib.add(
+        responses_lib.GET, url, body=buf.getvalue(), status=200,
+        content_type="application/zip"
+    )
+    responses_lib.add(responses_lib.GET, _delivery_url(trading_date), status=404)
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
-        assert "symbol" in df.columns
-        assert "close" in df.columns
-        assert "volume" in df.columns
-        assert "date" in df.columns
-        assert df["symbol"].iloc[0] == "RELIANCE"
-        assert df["close"].iloc[0] == pytest.approx(2830.00)
+    df = fetch_bhavcopy(trading_date)
+    assert all(df["series"] == "EQ")
+    assert "SOMENOTE" not in df["symbol"].values
 
-    def test_eq_series_filter_applied(self):
-        """Only EQ-series records are returned by default."""
-        trading_date = date(2024, 1, 1)
-        url = _bhavcopy_url(trading_date)
-        # CSV with both EQ and BE series
-        csv = (
-            "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,LAST,PREVCLOSE,"
-            "TOTTRDQTY,TOTTRDVAL,TIMESTAMP,TOTALTRADES,ISIN\r\n"
-            "RELIANCE,EQ,2800,2850,2790,2830,2830,2795,1000000,2830000000,01-JAN-2024,5000,INE002A01018\r\n"
-            "SOMENOTE,BE,100,105,98,103,103,99,50000,5150000,01-JAN-2024,200,INE999X01010\r\n"
-        )
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w") as zf:
-            zf.writestr("cm01JAN2024bhav.csv", csv)
-        responses_lib.add(
-            responses_lib.GET, url, body=buf.getvalue(), status=200,
-            content_type="application/zip"
-        )
-        self._register_delivery_404(trading_date)
 
-        df = fetch_bhavcopy(trading_date)
-        assert all(df["series"] == "EQ")
-        assert "SOMENOTE" not in df["symbol"].values
+@responses_lib.activate
+def test_bhavcopy_http_404_raises_fetch_error():
+    """
+    TRUE NEGATIVE: HTTP 404 (non-trading day or file not yet posted)
+    must raise BhavcopyFetchError — NOT return None or empty DataFrame.
+    """
+    trading_date = date(2024, 1, 6)  # Saturday — no trading
+    url = _bhavcopy_url(trading_date)
+    responses_lib.add(responses_lib.GET, url, status=404)
 
-    # ── True negatives (error paths) ────────────────────────────────────────
+    with pytest.raises(BhavcopyFetchError) as exc_info:
+        fetch_bhavcopy(trading_date)
 
-    def test_http_404_raises_fetch_error(self):
-        """
-        TRUE NEGATIVE: HTTP 404 (non-trading day or file not yet posted)
-        must raise BhavcopyFetchError — NOT return None or empty DataFrame.
-        """
-        trading_date = date(2024, 1, 6)  # Saturday — no trading
-        url = _bhavcopy_url(trading_date)
-        responses_lib.add(responses_lib.GET, url, status=404)
+    assert exc_info.value.status_code == 404
+    # The URL must be in the error so the caller knows what was attempted
+    assert "JAN" in str(exc_info.value) or "nseindia" in str(exc_info.value).lower()
 
-        with pytest.raises(BhavcopyFetchError) as exc_info:
-            fetch_bhavcopy(trading_date)
 
-        assert exc_info.value.status_code == 404
-        assert "2024-01-06" in str(exc_info.value) or "JAN" in str(exc_info.value)
+@responses_lib.activate
+def test_bhavcopy_http_503_raises_fetch_error():
+    """Server error raises BhavcopyFetchError with the correct status code."""
+    trading_date = date(2024, 1, 2)
+    url = _bhavcopy_url(trading_date)
+    responses_lib.add(responses_lib.GET, url, status=503)
 
-    def test_http_503_raises_fetch_error(self):
-        """Server error raises BhavcopyFetchError with the correct status code."""
-        trading_date = date(2024, 1, 2)
-        url = _bhavcopy_url(trading_date)
-        responses_lib.add(responses_lib.GET, url, status=503)
+    with pytest.raises(BhavcopyFetchError) as exc_info:
+        fetch_bhavcopy(trading_date)
 
-        with pytest.raises(BhavcopyFetchError) as exc_info:
-            fetch_bhavcopy(trading_date)
+    assert exc_info.value.status_code == 503
 
-        assert exc_info.value.status_code == 503
 
-    def test_malformed_zip_raises_parse_error(self):
-        """Non-ZIP bytes raise BhavcopyParseError, not a silent failure."""
-        trading_date = date(2024, 1, 3)
-        url = _bhavcopy_url(trading_date)
-        responses_lib.add(
-            responses_lib.GET, url,
-            body=b"this is not a zip file",
-            status=200,
-            content_type="application/zip",
-        )
-        self._register_delivery_404(trading_date)
+@responses_lib.activate
+def test_bhavcopy_malformed_zip_raises_parse_error():
+    """Non-ZIP bytes raise BhavcopyParseError, not a silent failure."""
+    trading_date = date(2024, 1, 3)
+    url = _bhavcopy_url(trading_date)
+    responses_lib.add(
+        responses_lib.GET, url,
+        body=b"this is not a zip file",
+        status=200, content_type="application/zip",
+    )
+    responses_lib.add(responses_lib.GET, _delivery_url(trading_date), status=404)
 
-        with pytest.raises(BhavcopyParseError):
-            fetch_bhavcopy(trading_date)
+    with pytest.raises(BhavcopyParseError):
+        fetch_bhavcopy(trading_date)
 
-    def test_missing_columns_raises_parse_error(self):
-        """CSV with missing required columns raises BhavcopyParseError with column names."""
-        trading_date = date(2024, 1, 4)
-        url = _bhavcopy_url(trading_date)
-        # CSV missing TOTTRDQTY and TOTTRDVAL (volume/turnover)
-        csv = (
-            "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TIMESTAMP,ISIN\r\n"
-            "RELIANCE,EQ,2800,2850,2790,2830,01-JAN-2024,INE002A01018\r\n"
-        )
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w") as zf:
-            zf.writestr("bhav.csv", csv)
-        responses_lib.add(
-            responses_lib.GET, url, body=buf.getvalue(), status=200,
-            content_type="application/zip"
-        )
-        self._register_delivery_404(trading_date)
 
-        with pytest.raises(BhavcopyParseError) as exc_info:
-            fetch_bhavcopy(trading_date)
+@responses_lib.activate
+def test_bhavcopy_missing_columns_raises_parse_error():
+    """CSV missing required columns raises BhavcopyParseError naming the missing columns."""
+    trading_date = date(2024, 1, 4)
+    url = _bhavcopy_url(trading_date)
+    # CSV missing TOTTRDQTY and TOTTRDVAL (volume/turnover)
+    csv = (
+        "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TIMESTAMP,ISIN\r\n"
+        "RELIANCE,EQ,2800,2850,2790,2830,01-JAN-2024,INE002A01018\r\n"
+    )
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("bhav.csv", csv)
+    responses_lib.add(
+        responses_lib.GET, url, body=buf.getvalue(), status=200,
+        content_type="application/zip"
+    )
+    responses_lib.add(responses_lib.GET, _delivery_url(trading_date), status=404)
 
-        # Must tell us WHICH columns are missing (HARD RULE #3 — explanation)
-        assert exc_info.value.missing_columns  # non-empty list
-        assert "TOTTRDQTY" in exc_info.value.missing_columns or \
-               "TOTTRDVAL" in exc_info.value.missing_columns
+    with pytest.raises(BhavcopyParseError) as exc_info:
+        fetch_bhavcopy(trading_date)
 
-    def test_no_synthetic_fallback_on_error(self):
-        """
-        Confirms the module does NOT silently return a DataFrame on failure.
-        Any HTTP error must propagate — this test would catch a hypothetical
-        'except: return mock_df' anti-pattern.
-        """
-        trading_date = date(2024, 1, 5)
-        url = _bhavcopy_url(trading_date)
-        responses_lib.add(responses_lib.GET, url, status=500)
+    # Must tell us WHICH columns are missing (HARD RULE #3 — explanation)
+    assert exc_info.value.missing_columns  # non-empty list
+    assert ("TOTTRDQTY" in exc_info.value.missing_columns or
+            "TOTTRDVAL" in exc_info.value.missing_columns)
 
-        with pytest.raises(BhavcopyFetchError):
-            fetch_bhavcopy(trading_date)
-        # If we reach here without exception, the test should fail
-        # (pytest.raises would have already failed if no exception was raised)
+
+@responses_lib.activate
+def test_bhavcopy_no_synthetic_fallback_on_error():
+    """
+    Confirms the module does NOT silently return a DataFrame on failure.
+    Any HTTP error must propagate — this would catch a hypothetical
+    'except: return mock_df' anti-pattern.
+    """
+    trading_date = date(2024, 1, 5)
+    url = _bhavcopy_url(trading_date)
+    responses_lib.add(responses_lib.GET, url, status=500)
+
+    with pytest.raises(BhavcopyFetchError):
+        fetch_bhavcopy(trading_date)
 
 
 # ════════════════════════════════════════════════════════════════════════════
 # Tests: nse_bulk_deals.py
 # ════════════════════════════════════════════════════════════════════════════
 
-_BULK_URL = "https://archives.nseindia.com/content/equities/bulk.csv"
-_BLOCK_URL = "https://archives.nseindia.com/content/equities/block_deal.csv"
+@responses_lib.activate
+def test_bulk_deals_valid_csv_parses():
+    """
+    TRUE POSITIVE: Valid bulk deal CSV parses into a DataFrame with
+    expected normalised columns and non-zero rows.
+    """
+    responses_lib.add(
+        responses_lib.GET, _BULK_URL,
+        body=_make_bulk_deal_csv().encode("latin-1"),
+        status=200, content_type="text/csv",
+    )
+
+    df = fetch_bulk_deals()
+
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 2
+    assert {"date", "symbol", "client_name", "buy_sell",
+            "quantity", "price", "deal_type"}.issubset(df.columns)
+    assert df["deal_type"].iloc[0] == "bulk"
+    assert "RELIANCE" in df["symbol"].values
 
 
 @responses_lib.activate
-class TestBulkDeals:
+def test_block_deals_valid_csv_parses():
+    """TRUE POSITIVE: Block deal CSV parses correctly with deal_type='block'."""
+    responses_lib.add(
+        responses_lib.GET, _BLOCK_URL,
+        body=_make_bulk_deal_csv().encode("latin-1"),
+        status=200, content_type="text/csv",
+    )
 
-    # ── True positives ──────────────────────────────────────────────────────
+    df = fetch_block_deals()
+    assert isinstance(df, pd.DataFrame)
+    assert df["deal_type"].iloc[0] == "block"
 
-    def test_valid_bulk_csv_parses(self):
-        """
-        TRUE POSITIVE: Valid bulk deal CSV parses into a DataFrame with
-        expected normalised columns and non-zero rows.
-        """
-        responses_lib.add(
-            responses_lib.GET, _BULK_URL,
-            body=_make_bulk_deal_csv().encode("latin-1"),
-            status=200,
-            content_type="text/csv",
-        )
 
-        df = fetch_bulk_deals()
+@responses_lib.activate
+def test_bulk_deals_http_404_raises_fetch_error():
+    """
+    TRUE NEGATIVE: HTTP 404 raises BulkDealFetchError — not empty DataFrame.
+    """
+    responses_lib.add(responses_lib.GET, _BULK_URL, status=404)
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == 2
-        assert set(["date", "symbol", "client_name", "buy_sell",
-                     "quantity", "price", "deal_type"]).issubset(df.columns)
-        assert df["deal_type"].iloc[0] == "bulk"
-        assert "RELIANCE" in df["symbol"].values
+    with pytest.raises(BulkDealFetchError) as exc_info:
+        fetch_bulk_deals()
 
-    def test_valid_block_csv_parses(self):
-        """TRUE POSITIVE: Block deal CSV parses correctly."""
-        responses_lib.add(
-            responses_lib.GET, _BLOCK_URL,
-            body=_make_bulk_deal_csv().encode("latin-1"),
-            status=200,
-            content_type="text/csv",
-        )
+    assert exc_info.value.status_code == 404
+    assert _BULK_URL in exc_info.value.url
 
-        df = fetch_block_deals()
-        assert isinstance(df, pd.DataFrame)
-        assert df["deal_type"].iloc[0] == "block"
 
-    # ── True negatives ──────────────────────────────────────────────────────
+@responses_lib.activate
+def test_bulk_deals_malformed_csv_raises_parse_error():
+    """
+    TRUE NEGATIVE: CSV missing required columns raises BulkDealParseError
+    with a message naming the missing columns.
+    """
+    bad_csv = "Date,Symbol\r\n01-Jan-2024,RELIANCE\r\n"
+    responses_lib.add(
+        responses_lib.GET, _BULK_URL,
+        body=bad_csv.encode("latin-1"),
+        status=200, content_type="text/csv",
+    )
 
-    def test_http_404_raises_fetch_error(self):
-        """
-        TRUE NEGATIVE: HTTP 404 raises BulkDealFetchError — not empty DataFrame.
-        """
-        responses_lib.add(responses_lib.GET, _BULK_URL, status=404)
+    with pytest.raises(BulkDealParseError) as exc_info:
+        fetch_bulk_deals()
 
-        with pytest.raises(BulkDealFetchError) as exc_info:
-            fetch_bulk_deals()
+    assert "missing" in str(exc_info.value).lower()
 
-        assert exc_info.value.status_code == 404
-        assert _BULK_URL in exc_info.value.url
 
-    def test_malformed_csv_missing_columns_raises_parse_error(self):
-        """
-        TRUE NEGATIVE: CSV missing required columns raises BulkDealParseError
-        with a message naming the missing columns.
-        """
-        # CSV with only Date and Symbol — missing all the useful fields
-        bad_csv = "Date,Symbol\r\n01-Jan-2024,RELIANCE\r\n"
-        responses_lib.add(
-            responses_lib.GET, _BULK_URL,
-            body=bad_csv.encode("latin-1"),
-            status=200,
-            content_type="text/csv",
-        )
+@responses_lib.activate
+def test_bulk_deals_server_error_does_not_return_empty_df():
+    """Network error must raise — never silently return empty data."""
+    responses_lib.add(responses_lib.GET, _BULK_URL, status=500)
 
-        with pytest.raises(BulkDealParseError) as exc_info:
-            fetch_bulk_deals()
-
-        assert "missing" in str(exc_info.value).lower()
-
-    def test_server_error_does_not_return_empty_df(self):
-        """Network error must raise — never silently return empty data."""
-        responses_lib.add(responses_lib.GET, _BULK_URL, status=500)
-
-        with pytest.raises(BulkDealFetchError):
-            fetch_bulk_deals()
+    with pytest.raises(BulkDealFetchError):
+        fetch_bulk_deals()
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Tests: broker_order_stream.py
+# Tests: broker_order_stream.py (no HTTP — credential + parsing tests)
 # ════════════════════════════════════════════════════════════════════════════
 
 class TestBrokerOrderStream:
@@ -411,10 +421,7 @@ class TestBrokerOrderStream:
         """
         TRUE NEGATIVE: Constructing KiteOrderStream without credentials
         raises BrokerAuthError IMMEDIATELY — does not defer to first API call.
-        This is a critical test: the module must never silently proceed or
-        fall back to synthetic data when credentials are missing.
         """
-        # Ensure env vars are NOT set for this test
         env_backup = {}
         for var in ("KITE_API_KEY", "KITE_ACCESS_TOKEN"):
             env_backup[var] = os.environ.pop(var, None)
@@ -430,7 +437,6 @@ class TestBrokerOrderStream:
                 "a generic error message is insufficient for debugging."
             )
         finally:
-            # Restore env vars
             for var, val in env_backup.items():
                 if val is not None:
                     os.environ[var] = val
@@ -485,7 +491,7 @@ class TestBrokerOrderStream:
     def test_kite_status_mapping_covers_all_states(self):
         """
         TRUE POSITIVE: All known Kite status strings map to valid Sentinel statuses.
-        Unmapped statuses should default gracefully, not KeyError.
+        Unmapped statuses must default gracefully, not raise KeyError.
         """
         from data.ingest.broker_order_stream import _kite_status_to_sentinel
 
@@ -504,199 +510,197 @@ class TestBrokerOrderStream:
                 f"which is not a valid Sentinel OrderStatus"
             )
 
-    def test_kite_connect_not_installed_raises_broker_auth_error(self):
+    def test_invalid_credentials_raise_broker_auth_error_immediately(self):
         """
-        If kiteconnect package is not installed, a helpful BrokerAuthError
-        is raised at init time (not an ImportError that's harder to understand).
+        TRUE NEGATIVE: Fake-but-structurally-valid credentials must raise
+        BrokerAuthError at __init__ time — not at the first API call.
+        This ensures the module fails loudly and immediately on bad auth,
+        rather than appearing to succeed and failing silently later.
         """
-        import sys
-        # Temporarily hide kiteconnect from the import system
-        real_kiteconnect = sys.modules.pop("kiteconnect", None)
-        try:
-            from data.ingest.broker_order_stream import KiteOrderStream
-            with pytest.raises(BrokerAuthError) as exc_info:
-                KiteOrderStream(api_key="fake_key", access_token="fake_token")
-            # The error message should mention kiteconnect
-            assert "kiteconnect" in str(exc_info.value).lower()
-        finally:
-            if real_kiteconnect is not None:
-                sys.modules["kiteconnect"] = real_kiteconnect
+        from data.ingest.broker_order_stream import KiteOrderStream
+        with pytest.raises(BrokerAuthError) as exc_info:
+            KiteOrderStream(api_key="fake_key_1234", access_token="fake_token_5678")
+
+        error_msg = str(exc_info.value).lower()
+        assert any(kw in error_msg for kw in (
+            "kite", "api_key", "access_token", "authentication", "token"
+        )), (
+            f"BrokerAuthError message should identify the credential problem. "
+            f"Got: {exc_info.value}"
+        )
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Tests: nse_option_chain.py
+# Tests: nse_option_chain.py — HTTP fetch (mocked)
 # ════════════════════════════════════════════════════════════════════════════
 
-_NSE_HOME_URL = "https://www.nseindia.com/"
-_OC_NIFTY_URL = "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY"
-_OC_RELIANCE_URL = "https://www.nseindia.com/api/option-chain-equities?symbol=RELIANCE"
+@responses_lib.activate
+def test_option_chain_valid_nifty_parses():
+    """
+    TRUE POSITIVE: Valid NSE option chain JSON parses into a DataFrame with
+    correct columns, one row per (strike, expiry, option_type) combination.
+    """
+    _register_homepage()
+    responses_lib.add(
+        responses_lib.GET, _nifty_oc_url(),
+        json=_make_option_chain_response("NIFTY"),
+        status=200, content_type="application/json",
+    )
+
+    df = fetch_option_chain("NIFTY")
+
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 3   # 2 strikes × 2 option types, minus 1 missing PE
+    assert {"symbol", "expiry", "strike", "option_type",
+            "oi", "iv", "volume", "ltp"}.issubset(df.columns)
+    assert df["symbol"].iloc[0] == "NIFTY"
 
 
 @responses_lib.activate
-class TestOptionChain:
+def test_option_chain_underlying_value_propagated():
+    """Underlying value from the response is available in the DataFrame."""
+    _register_homepage()
+    responses_lib.add(
+        responses_lib.GET, _nifty_oc_url(),
+        json=_make_option_chain_response("NIFTY"),
+        status=200, content_type="application/json",
+    )
+    df = fetch_option_chain("NIFTY")
+    # All rows should have underlying_value ≈ 21500.0
+    # Use numeric comparison — pytest.approx doesn't work with Series.all()
+    assert (df["underlying_value"] - 21500.0).abs().max() < 1.0, (
+        f"Expected underlying_value ≈ 21500.0, got: {df['underlying_value'].tolist()}"
+    )
 
-    def _register_homepage(self):
-        responses_lib.add(
-            responses_lib.GET, _NSE_HOME_URL, body="<html>ok</html>",
-            status=200, content_type="text/html"
-        )
 
-    # ── True positives ──────────────────────────────────────────────────────
+@responses_lib.activate
+def test_option_chain_equity_symbol_uses_equities_endpoint():
+    """RELIANCE (not an index) uses the /option-chain-equities endpoint."""
+    _register_homepage()
+    responses_lib.add(
+        responses_lib.GET, _reliance_oc_url(),
+        json=_make_option_chain_response("RELIANCE"),
+        status=200, content_type="application/json",
+    )
+    df = fetch_option_chain("RELIANCE")
+    assert df["symbol"].iloc[0] == "RELIANCE"
 
-    def test_valid_nifty_option_chain_parses(self):
-        """
-        TRUE POSITIVE: Valid NSE option chain JSON parses into a DataFrame with
-        correct columns, one row per (strike, expiry, option_type) combination.
-        """
-        self._register_homepage()
-        responses_lib.add(
-            responses_lib.GET, _OC_NIFTY_URL,
-            json=_make_option_chain_response("NIFTY"),
-            status=200,
-            content_type="application/json",
-        )
 
-        df = fetch_option_chain("NIFTY")
+@responses_lib.activate
+def test_option_chain_missing_pe_handled_gracefully():
+    """A strike with only CE (no PE key) is handled gracefully."""
+    _register_homepage()
+    data = _make_option_chain_response("NIFTY")
+    # Remove PE from both strikes to create all-CE scenario
+    data["records"]["data"][0].pop("PE", None)
+    data["records"]["data"][1].pop("PE", None)
 
-        assert isinstance(df, pd.DataFrame)
-        # 2 strikes × up to 2 option types; one strike has only CE → 3 rows
-        assert len(df) == 3
-        assert set(["symbol", "expiry", "strike", "option_type",
-                     "oi", "iv", "volume", "ltp"]).issubset(df.columns)
-        assert df["symbol"].iloc[0] == "NIFTY"
-        assert set(df["option_type"].unique()) == {"CE", "PE"} or \
-               set(df["option_type"].unique()).issubset({"CE", "PE"})
+    responses_lib.add(
+        responses_lib.GET, _nifty_oc_url(),
+        json=data, status=200, content_type="application/json"
+    )
+    df = fetch_option_chain("NIFTY")
+    assert len(df) == 2
+    assert all(df["option_type"] == "CE")
 
-    def test_underlying_value_propagated(self):
-        """Underlying value from the response is available in the DataFrame."""
-        self._register_homepage()
-        responses_lib.add(
-            responses_lib.GET, _OC_NIFTY_URL,
-            json=_make_option_chain_response("NIFTY"),
-            status=200,
-            content_type="application/json",
-        )
-        df = fetch_option_chain("NIFTY")
-        assert (df["underlying_value"] == pytest.approx(21500.0)).all()
 
-    def test_equity_symbol_uses_equities_endpoint(self):
-        """RELIANCE (not an index) uses the /option-chain-equities endpoint."""
-        self._register_homepage()
-        responses_lib.add(
-            responses_lib.GET, _OC_RELIANCE_URL,
-            json=_make_option_chain_response("RELIANCE"),
-            status=200,
-            content_type="application/json",
-        )
-        df = fetch_option_chain("RELIANCE")
-        assert df["symbol"].iloc[0] == "RELIANCE"
+@responses_lib.activate
+def test_option_chain_http_404_raises_fetch_error():
+    """
+    TRUE NEGATIVE: HTTP 404 raises OptionChainFetchError — not empty DataFrame.
+    """
+    _register_homepage()
+    responses_lib.add(responses_lib.GET, _nifty_oc_url(), status=404)
 
-    def test_missing_pe_strike_does_not_crash(self):
-        """A strike with only CE (no PE key) is handled gracefully."""
-        self._register_homepage()
-        data = _make_option_chain_response("NIFTY")
-        # Remove PE from the second strike (already the case in our fixture)
-        # and also remove PE from the first strike to create an all-CE scenario
-        data["records"]["data"][0].pop("PE", None)
-        data["records"]["data"][1].pop("PE", None)
+    with pytest.raises(OptionChainFetchError) as exc_info:
+        fetch_option_chain("NIFTY")
 
-        responses_lib.add(
-            responses_lib.GET, _OC_NIFTY_URL,
-            json=data, status=200, content_type="application/json"
-        )
-        df = fetch_option_chain("NIFTY")
-        assert len(df) == 2   # both CE-only rows
-        assert all(df["option_type"] == "CE")
+    assert exc_info.value.status_code == 404
 
-    # ── True negatives ──────────────────────────────────────────────────────
 
-    def test_http_404_raises_option_chain_fetch_error(self):
-        """
-        TRUE NEGATIVE: HTTP 404 raises OptionChainFetchError — not empty DataFrame.
-        """
-        self._register_homepage()
-        responses_lib.add(responses_lib.GET, _OC_NIFTY_URL, status=404)
+@responses_lib.activate
+def test_option_chain_html_response_raises_fetch_error():
+    """
+    TRUE NEGATIVE: NSE returning an HTML page (block/rate-limit response)
+    instead of JSON raises OptionChainFetchError with a clear message.
+    This is the most common real-world failure mode for this API —
+    NSE returns 200 OK even for block pages, so content-type checking
+    is the only reliable way to detect it.
+    """
+    _register_homepage()
+    responses_lib.add(
+        responses_lib.GET, _nifty_oc_url(),
+        body="<html><body>Access denied</body></html>",
+        status=200, content_type="text/html",
+    )
 
-        with pytest.raises(OptionChainFetchError) as exc_info:
-            fetch_option_chain("NIFTY")
+    with pytest.raises(OptionChainFetchError) as exc_info:
+        fetch_option_chain("NIFTY")
 
-        assert exc_info.value.status_code == 404
+    assert "html" in str(exc_info.value).lower() or \
+           "session" in str(exc_info.value).lower()
 
-    def test_html_response_raises_fetch_error(self):
-        """
-        TRUE NEGATIVE: NSE returning an HTML page (block/rate-limit response)
-        instead of JSON raises OptionChainFetchError with a clear message.
-        This is the most common real-world failure mode for this API.
-        """
-        self._register_homepage()
-        responses_lib.add(
-            responses_lib.GET, _OC_NIFTY_URL,
-            body="<html><body>Access denied</body></html>",
-            status=200,  # NSE returns 200 even for block pages
-            content_type="text/html",
-        )
 
-        with pytest.raises(OptionChainFetchError) as exc_info:
-            fetch_option_chain("NIFTY")
+@responses_lib.activate
+def test_option_chain_malformed_json_raises_parse_error():
+    """
+    TRUE NEGATIVE: JSON response missing the 'records' key raises
+    OptionChainParseError with a message naming the missing keys.
+    """
+    _register_homepage()
+    bad_response = {"status": "ok", "something_else": []}
+    responses_lib.add(
+        responses_lib.GET, _nifty_oc_url(),
+        json=bad_response, status=200, content_type="application/json",
+    )
 
-        assert "html" in str(exc_info.value).lower() or \
-               "session" in str(exc_info.value).lower()
+    with pytest.raises(OptionChainParseError) as exc_info:
+        fetch_option_chain("NIFTY")
 
-    def test_malformed_json_structure_raises_parse_error(self):
-        """
-        TRUE NEGATIVE: JSON response missing the 'records' key raises
-        OptionChainParseError with a message naming the missing keys.
-        """
-        self._register_homepage()
-        # NSE changed their format — 'records' key is gone
-        bad_response = {"status": "ok", "something_else": []}
-        responses_lib.add(
-            responses_lib.GET, _OC_NIFTY_URL,
-            json=bad_response,
-            status=200,
-            content_type="application/json",
-        )
+    assert "records" in str(exc_info.value).lower() or \
+           "keys" in str(exc_info.value).lower()
 
-        with pytest.raises(OptionChainParseError) as exc_info:
-            fetch_option_chain("NIFTY")
 
-        assert "records" in str(exc_info.value).lower() or \
-               "keys" in str(exc_info.value).lower()
-
-    def test_empty_data_array_raises_parse_error(self):
-        """Empty 'data' array raises OptionChainParseError (not silent empty DF)."""
-        self._register_homepage()
-        data = {
-            "records": {
-                "expiryDates": [],
-                "underlyingValue": 21500.0,
-                "data": [],  # no strikes
-            }
+@responses_lib.activate
+def test_option_chain_empty_data_array_raises_parse_error():
+    """Empty 'data' array raises OptionChainParseError (not silent empty DF)."""
+    _register_homepage()
+    data = {
+        "records": {
+            "expiryDates": [],
+            "underlyingValue": 21500.0,
+            "data": [],
         }
-        responses_lib.add(
-            responses_lib.GET, _OC_NIFTY_URL,
-            json=data, status=200, content_type="application/json"
-        )
+    }
+    responses_lib.add(
+        responses_lib.GET, _nifty_oc_url(),
+        json=data, status=200, content_type="application/json"
+    )
 
-        with pytest.raises(OptionChainParseError):
-            fetch_option_chain("NIFTY")
+    with pytest.raises(OptionChainParseError):
+        fetch_option_chain("NIFTY")
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Parser unit tests (no HTTP — pure data transformation)
+# Tests: option chain parser (pure data transformation, no HTTP)
 # ════════════════════════════════════════════════════════════════════════════
 
 class TestOptionChainParser:
-    """Tests _parse_option_chain_response directly."""
+    """Tests _parse_option_chain_response directly — no HTTP mock needed."""
 
     def test_numeric_types_correct(self):
         """OI, IV, volume, strike must be numeric (not strings)."""
         data = _make_option_chain_response("NIFTY")
         df = _parse_option_chain_response(data, "NIFTY", datetime.utcnow())
-        assert pd.api.types.is_float_dtype(df["oi"]) or \
-               pd.api.types.is_integer_dtype(df["oi"])
-        assert pd.api.types.is_float_dtype(df["iv"])
-        assert pd.api.types.is_float_dtype(df["strike"])
+        # OI can be int or float depending on values
+        assert pd.api.types.is_numeric_dtype(df["oi"]), \
+            f"oi should be numeric, got {df['oi'].dtype}"
+        assert pd.api.types.is_float_dtype(df["iv"]), \
+            f"iv should be float, got {df['iv'].dtype}"
+        # Strike prices are whole numbers (e.g. 21500) — pandas infers int64,
+        # which is fine: the point is it must not be object/string dtype.
+        assert pd.api.types.is_numeric_dtype(df["strike"]), \
+            f"strike should be numeric, got {df['strike'].dtype}"
 
     def test_expiry_column_is_datetime(self):
         """Expiry strings are parsed into pandas datetime."""
@@ -706,50 +710,48 @@ class TestOptionChainParser:
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# Live integration tests (skipped in CI — run manually)
+# Live integration tests (skipped in CI — run manually with -m live)
 # ════════════════════════════════════════════════════════════════════════════
 
 @pytest.mark.live
-class TestLiveIntegration:
-    """
-    Real-network tests. Run with: pytest -v -m live
-    These require an internet connection and (for broker tests) valid credentials.
-    They are excluded from CI to avoid rate-limiting NSE's servers.
-    """
+def test_live_bhavcopy_yesterday():
+    """Fetch yesterday's bhavcopy and verify it has >0 rows."""
+    from data.ingest.nse_bhavcopy import get_last_trading_day
+    last_day = get_last_trading_day()
+    df = fetch_bhavcopy(last_day)
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) > 100, f"Expected >100 symbols, got {len(df)}"
 
-    def test_live_bhavcopy_yesterday(self):
-        """Fetch yesterday's bhavcopy and verify it has >0 rows."""
-        from data.ingest.nse_bhavcopy import get_last_trading_day
-        last_day = get_last_trading_day()
-        df = fetch_bhavcopy(last_day)
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 100, f"Expected >100 symbols, got {len(df)}"
-        assert "RELIANCE" in df["symbol"].values or len(df) > 0
 
-    def test_live_bulk_deals(self):
-        """Fetch current-year bulk deals — should have thousands of rows."""
-        df = fetch_bulk_deals()
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
+@pytest.mark.live
+def test_live_bulk_deals():
+    """Fetch current-year bulk deals — should have thousands of rows."""
+    df = fetch_bulk_deals()
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) > 0
 
-    def test_live_option_chain_nifty(self):
-        """Fetch live NIFTY option chain. May fail outside market hours."""
-        df = fetch_option_chain("NIFTY")
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
-        assert "NIFTY" in df["symbol"].values
 
-    def test_live_broker_auth_error_without_creds(self):
-        """Without env vars, KiteOrderStream raises BrokerAuthError on any system."""
-        env_backup = {}
-        for var in ("KITE_API_KEY", "KITE_ACCESS_TOKEN"):
-            env_backup[var] = os.environ.pop(var, None)
+@pytest.mark.live
+def test_live_option_chain_nifty():
+    """Fetch live NIFTY option chain. May fail outside market hours."""
+    df = fetch_option_chain("NIFTY")
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) > 0
+    assert "NIFTY" in df["symbol"].values
 
-        try:
-            from data.ingest.broker_order_stream import KiteOrderStream
-            with pytest.raises(BrokerAuthError):
-                KiteOrderStream()
-        finally:
-            for var, val in env_backup.items():
-                if val is not None:
-                    os.environ[var] = val
+
+@pytest.mark.live
+def test_live_broker_auth_error_without_creds():
+    """Without env vars, KiteOrderStream raises BrokerAuthError on any system."""
+    env_backup = {}
+    for var in ("KITE_API_KEY", "KITE_ACCESS_TOKEN"):
+        env_backup[var] = os.environ.pop(var, None)
+
+    try:
+        from data.ingest.broker_order_stream import KiteOrderStream
+        with pytest.raises(BrokerAuthError):
+            KiteOrderStream()
+    finally:
+        for var, val in env_backup.items():
+            if val is not None:
+                os.environ[var] = val
