@@ -1,0 +1,13 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+sqlalchemy==2.0.30
+pydantic==2.7.1
+numpy==1.26.4
+pandas==2.2.2
+python-dateutil==2.9.0.post0
+
+# Phase 1 additions — data ingestion
+requests==2.32.3          # HTTP client for all NSE archive fetches
+responses==0.25.3         # HTTP mock library for unit tests (no real network in CI)
+pytest==8.2.2             # test runner
+kiteconnect==5.0.1        # Zerodha Kite Connect SDK (broker order stream)
