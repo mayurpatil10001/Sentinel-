@@ -55,3 +55,24 @@ class EvidenceLogOut(BaseModel):
 class DetectionRunRequest(BaseModel):
     instrument_id: str
     window_minutes: int = 15
+
+
+class EscalateRequest(BaseModel):
+    new_status: str          # open | investigating | escalated | closed
+    notes: str = ""
+
+
+class DraftSAROut(BaseModel):
+    case_reference: str
+    alert_id: str
+    generated_at: str
+    is_draft: bool
+    header: dict
+    subject: dict
+    suspected_pattern: dict
+    evidence: dict
+    accounts_involved: list
+    methodology: str
+    limitations: str
+    recommended_action: str
+    text_document: str       # full plain-text SAR for download/filing

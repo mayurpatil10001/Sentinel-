@@ -1,11 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.db.models import Alert, Instrument, Order
 from app.detection.spoofing import run_spoofing_detection
 from app.detection.evidence import build_evidence_log
-from app.schemas.schemas import AlertOut, EvidenceLogOut, DetectionRunRequest
+from app.alerts.manager import create_or_update_alert, escalate_alert
+from app.alerts.sebi_report import generate_draft_sar, format_sar_as_text, format_sar_as_dict
+from app.schemas.schemas import (
+    AlertOut,
+    EvidenceLogOut,
+    DetectionRunRequest,
+    EscalateRequest,
+    DraftSAROut,
+)
 
 router = APIRouter()
 
@@ -19,7 +28,8 @@ def health():
 def run_detection(req: DetectionRunRequest, db: Session = Depends(get_db)):
     """
     Runs the spoofing/layering detector over all stored orders for the
-    given instrument and persists any resulting alerts.
+    given instrument and persists any resulting alerts via the alert manager
+    (deduplication + escalation tier applied automatically).
     """
     instrument = db.query(Instrument).filter(Instrument.id == req.instrument_id).first()
     if not instrument:
