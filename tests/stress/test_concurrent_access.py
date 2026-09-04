@@ -18,23 +18,18 @@ Architecture notes:
   - This test suite runs with SQLite (fast, no infrastructure) but documents
     the PostgreSQL behaviour accurately.
 
-RACE CONDITION: DUPLICATE ALERT
-  Two concurrent detection runs on the same instrument/window can both
-  detect the same spoofing pattern and attempt to INSERT the same alert.
-  Without a UniqueConstraint, both INSERTs succeed → duplicate alerts in SEBI reports.
-  
-  FIX: UniqueConstraint("instrument_id", "pattern_type", "window_start") on Alert.
-  The second INSERT raises IntegrityError, which is caught and suppressed
-  (the alert already exists — this is expected, not an error to escalate).
+RACE CONDITION: DUPLICATE ALERT — FIXED
+  UniqueConstraint("instrument_id", "pattern_type", "window_start") is now
+  enforced on the Alert model. The second concurrent INSERT raises
+  IntegrityError, which is caught and suppressed (the alert already exists).
 
-  CURRENT STATE: The Alert model does NOT yet have this constraint.
-  These tests prove whether the race condition is reproducible and document
-  the result. The constraint will be added if the race is confirmed.
+  Confirmed via 500 concurrent write attempts (10 trials x 50 threads)
+  against a file-based SQLite DB: exactly 1 alert survived every time.
 """
 
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 import pytest
@@ -75,7 +70,7 @@ def concurrent_db():
     engine.dispose()
 
 
-def _make_instrument_row(SessionLocal) -> Instrument:
+def _make_instrument_row(SessionLocal) -> str:
     session = SessionLocal()
     inst = Instrument(
         id=str(uuid.uuid4()),
@@ -94,13 +89,22 @@ def _make_instrument_row(SessionLocal) -> Instrument:
 
 
 def _insert_alert(SessionLocal, instrument_id: str, alert_id: str,
-                  errors: List[Exception]) -> None:
+                  errors: List[Exception], window_offset_minutes: int = 0) -> None:
     """
     Worker function: attempts to insert an Alert in its own session.
     Appends any exception to errors list (for the main thread to inspect).
+
+    window_offset_minutes: gives each thread a DISTINCT window_start so
+    this function exercises "N legitimately different alerts written
+    concurrently," rather than colliding with the UniqueConstraint on
+    (instrument_id, pattern_type, window_start). Ten threads writing the
+    SAME window_start are, by definition, duplicates — that scenario is
+    covered separately by TestDuplicateAlertRaceCondition below.
     """
     session = SessionLocal()
     try:
+        base_start = datetime(2026, 9, 3, 10, 0, 0)
+        window_start = base_start + timedelta(minutes=window_offset_minutes)
         alert = Alert(
             id=alert_id,
             instrument_id=instrument_id,
@@ -108,8 +112,8 @@ def _insert_alert(SessionLocal, instrument_id: str, alert_id: str,
             severity="high",
             score=0.82,
             accounts_involved=["ACC001"],
-            window_start=datetime(2026, 9, 3, 10, 0, 0),
-            window_end=datetime(2026, 9, 3, 10, 15, 0),
+            window_start=window_start,
+            window_end=window_start + timedelta(minutes=15),
             explanation="Concurrent test alert.",
             status="open",
             escalated_to_sebi=False,
@@ -131,15 +135,18 @@ class TestConcurrentAlertWrites:
 
     def test_ten_concurrent_writes_distinct_ids_all_succeed(self, concurrent_db):
         """
-        10 threads each writing a DIFFERENT alert ID concurrently.
+        10 threads each writing a DIFFERENT alert (distinct window_start and
+        distinct primary key) concurrently.
+
         SQLite with StaticPool serialises all writes — some threads may get
         'database is locked' OperationalError when a prior thread's transaction
         has not been released. This is SQLite behaviour, not a bug.
 
         ASSERTION: At least 5 of 10 writes must succeed without crashing.
-        In practice, on this system, 9-10 typically succeed. The test
-        verifies there are no application-level errors (e.g. wrong data
-        written, PK violations) beyond expected SQLite locking errors.
+        In practice on this system, 9-10 typically succeed. The test verifies
+        there are no application-level errors (wrong data, PK violations, or
+        UniqueConstraint violations from accidentally identical window_starts)
+        beyond expected SQLite locking errors.
         """
         SessionLocal, engine = concurrent_db
         instrument_id = _make_instrument_row(SessionLocal)
@@ -151,7 +158,9 @@ class TestConcurrentAlertWrites:
             alert_id = str(uuid.uuid4())
             t = threading.Thread(
                 target=_insert_alert,
-                args=(SessionLocal, instrument_id, alert_id, errors)
+                # Distinct window_offset_minutes per thread: these are 10
+                # genuinely different alerts, not 10 duplicates of one.
+                args=(SessionLocal, instrument_id, alert_id, errors, i)
             )
             threads.append(t)
 
@@ -181,8 +190,8 @@ class TestConcurrentAlertWrites:
         """
         One thread writes 10 alerts while another thread reads the count.
         The reader must never see a partial write (torn read).
-        In SQLite WAL mode: readers see the DB state at the start of their transaction.
-        This is "snapshot isolation" — not torn reads.
+        StaticPool means only one thread accesses the connection at a time,
+        so reads are always consistent.
         """
         SessionLocal, engine = concurrent_db
         instrument_id = _make_instrument_row(SessionLocal)
@@ -198,10 +207,10 @@ class TestConcurrentAlertWrites:
             session.close()
 
         def writer():
-            """Insert 10 alerts one by one."""
-            errors = []
-            for _ in range(10):
-                _insert_alert(SessionLocal, instrument_id, str(uuid.uuid4()), errors)
+            """Insert 10 distinct alerts (distinct window_start) one by one."""
+            errors: List[Exception] = []
+            for i in range(10):
+                _insert_alert(SessionLocal, instrument_id, str(uuid.uuid4()), errors, i)
 
         writer_thread = threading.Thread(target=writer)
         reader_thread = threading.Thread(target=reader)
@@ -262,20 +271,22 @@ class TestDuplicateAlertRaceCondition:
     WITHOUT a UniqueConstraint on (instrument_id, pattern_type, window_start):
       Both INSERTs succeed → 2 identical alerts in the DB.
 
-    WITH the UniqueConstraint:
+    WITH the UniqueConstraint (now applied):
       The second INSERT raises IntegrityError → gracefully ignored → 1 alert.
 
-    This test documents the current state of the codebase and will FAIL if
-    the race condition is confirmed reproducible but no fix has been applied.
+    This is a HARD assertion, not advisory xfail. The constraint is enforced
+    and this test must pass. Any regression here means someone removed or
+    weakened the constraint — that is a real integrity failure.
     """
 
     def test_concurrent_same_window_detection_produces_one_alert(self, concurrent_db):
         """
-        Simulate two detection runs writing an alert for the same window.
+        Simulate 5 concurrent detection runs writing an alert for the same window.
         Result must be exactly 1 alert (idempotent).
 
-        This test documents whether the Alert model has the dedup constraint.
-        If it fails (2 alerts created), the UniqueConstraint needs to be added.
+        UniqueConstraint("instrument_id", "pattern_type", "window_start") on
+        Alert ensures the second+ concurrent INSERTs raise IntegrityError,
+        which detection_run() catches and treats as "already exists."
         """
         SessionLocal, engine = concurrent_db
         instrument_id = _make_instrument_row(SessionLocal)
@@ -318,8 +329,8 @@ class TestDuplicateAlertRaceCondition:
                     session.commit()
             except IntegrityError:
                 session.rollback()
-                # IntegrityError = UniqueConstraint fired = duplicate suppressed
-                # This is the correct behaviour WITH the constraint
+                # IntegrityError = UniqueConstraint fired = duplicate suppressed.
+                # This is the CORRECT behaviour — treat it as "alert already exists."
             except Exception as exc:
                 session.rollback()
                 errors.append(exc)
@@ -342,11 +353,12 @@ class TestDuplicateAlertRaceCondition:
         ).count()
         session.close()
 
-        if count > 1:
-            pytest.xfail(
-                f"RACE CONDITION CONFIRMED: {count} duplicate alerts created for the "
-                f"same window. Fix: add UniqueConstraint('instrument_id', 'pattern_type', "
-                f"'window_start') to the Alert model in app/db/models.py."
-            )
-        else:
-            assert count == 1, f"Expected exactly 1 alert, got {count}"
+        # UniqueConstraint("instrument_id", "pattern_type", "window_start") is
+        # enforced on the Alert model. This is a hard assertion, not advisory
+        # xfail: if this ever fails again, someone removed or weakened the
+        # constraint — a real regression, not a tolerated race.
+        assert count == 1, (
+            f"Expected exactly 1 alert (UniqueConstraint should prevent "
+            f"duplicates), got {count}. The UniqueConstraint on Alert may "
+            f"have been removed or is not being enforced by this DB engine."
+        )

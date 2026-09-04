@@ -47,6 +47,7 @@ from sqlalchemy import (
     Integer,
     JSON,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -192,3 +193,22 @@ class Alert(Base):
     escalated_to_sebi = Column(Boolean, default=False)
 
     instrument = relationship("Instrument")
+
+    # Prevents duplicate alerts when concurrent detection runs both fire on
+    # the same (instrument, pattern, window). Confirmed via
+    # tests/stress/test_concurrent_access.py that without this, two
+    # concurrent detection runs can both pass the "does this alert already
+    # exist" check before either commits (classic TOCTOU race), producing
+    # two identical alerts pointing at the same evidence — a real integrity
+    # problem for anything referenced in a SEBI filing. With this
+    # constraint, the second concurrent INSERT raises IntegrityError, which
+    # calling code must catch and treat as "alert already exists," not as
+    # a failure.
+    __table_args__ = (
+        UniqueConstraint(
+            "instrument_id",
+            "pattern_type",
+            "window_start",
+            name="uq_alert_instrument_pattern_window",
+        ),
+    )
