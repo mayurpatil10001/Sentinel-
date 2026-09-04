@@ -101,10 +101,11 @@ def pull_bhavcopy_for_symbol(
     for trading_date in attempted:
         try:
             df = fetch_bhavcopy(trading_date)
-            # Filter to this symbol (and series if specified)
-            mask = df["SYMBOL"].str.upper() == symbol_upper
+            # fetch_bhavcopy returns lowercase renamed columns:
+            # symbol, series, isin, open, high, low, close, volume, turnover, date, exchange
+            mask = df["symbol"].str.upper() == symbol_upper
             if series:
-                mask &= df["SERIES"].str.upper() == series.upper()
+                mask &= df["series"].str.upper() == series.upper()
             symbol_rows = df[mask]
 
             if symbol_rows.empty:
@@ -115,7 +116,7 @@ def pull_bhavcopy_for_symbol(
                     f"(series={series}). Trying all series."
                 )
                 # Retry without series filter to see if it's a series mismatch
-                symbol_rows = df[df["SYMBOL"].str.upper() == symbol_upper]
+                symbol_rows = df[df["symbol"].str.upper() == symbol_upper]
                 if symbol_rows.empty:
                     fetch_errors.append({
                         "date": trading_date,
@@ -127,7 +128,7 @@ def pull_bhavcopy_for_symbol(
                     })
                     continue
                 # Found under different series — log but use it
-                found_series = symbol_rows["SERIES"].iloc[0]
+                found_series = symbol_rows["series"].iloc[0]
                 logger.info(
                     f"{symbol_upper}: found under series {found_series!r} "
                     f"(not {series!r}) for {trading_date}"
@@ -174,11 +175,20 @@ def pull_bhavcopy_for_symbol(
     data_df = None
     if rows:
         data_df = pd.DataFrame(rows)
-        # Normalise column types
-        for col in ("OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY", "TOTTRDVAL"):
+        # Normalise column types (lowercase column names from fetch_bhavcopy)
+        for col in ("open", "high", "low", "close", "volume", "turnover"):
             if col in data_df.columns:
                 data_df[col] = pd.to_numeric(data_df[col], errors="coerce")
-        data_df = data_df.sort_values("DATE").reset_index(drop=True)
+        # Add uppercase aliases for backward compat with runner
+        data_df["SYMBOL"] = data_df["symbol"]
+        data_df["OPEN"]   = data_df["open"]
+        data_df["HIGH"]   = data_df["high"]
+        data_df["LOW"]    = data_df["low"]
+        data_df["CLOSE"]  = data_df["close"]
+        data_df["TOTTRDQTY"] = data_df["volume"]
+        data_df["TOTTRDVAL"] = data_df["turnover"]
+        data_df["DATE"]   = data_df.get("DATE", data_df.get("date"))
+        data_df = data_df.sort_values("date").reset_index(drop=True)
 
     return {
         "symbol": symbol_upper,
@@ -262,7 +272,7 @@ def pull_negative_controls(symbols: list[str], dates: list[date]) -> dict[str, d
         rows = []
         fetch_errors = []
         for d, df in full_bhavcopies.items():
-            mask = df["SYMBOL"].str.upper() == symbol_upper
+            mask = df["symbol"].str.upper() == symbol_upper
             symbol_rows = df[mask]
             if symbol_rows.empty:
                 fetch_errors.append({
@@ -277,9 +287,18 @@ def pull_negative_controls(symbols: list[str], dates: list[date]) -> dict[str, d
         data_df = None
         if rows:
             data_df = pd.DataFrame(rows)
-            for col in ("OPEN", "HIGH", "LOW", "CLOSE", "TOTTRDQTY", "TOTTRDVAL"):
+            for col in ("open", "high", "low", "close", "volume", "turnover"):
                 if col in data_df.columns:
                     data_df[col] = pd.to_numeric(data_df[col], errors="coerce")
+            # Uppercase aliases for the runner
+            data_df["SYMBOL"] = data_df["symbol"]
+            data_df["OPEN"]   = data_df["open"]
+            data_df["HIGH"]   = data_df["high"]
+            data_df["LOW"]    = data_df["low"]
+            data_df["CLOSE"]  = data_df["close"]
+            data_df["TOTTRDQTY"] = data_df["volume"]
+            data_df["TOTTRDVAL"] = data_df["turnover"]
+            data_df["DATE"]   = data_df.get("DATE", data_df.get("date"))
             data_df = data_df.sort_values("DATE").reset_index(drop=True)
 
         results[symbol_upper] = {

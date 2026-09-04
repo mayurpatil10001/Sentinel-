@@ -1,0 +1,29 @@
+{
+  "case_id": "KIL-2019",
+  "order_reference": "Adjudication Order in the matter of Kavit Industries Limited, passed February 28, 2025 (SEBI Adjudicating Officer Order)",
+  "order_date": "2025-02-28",
+  "alleged_pattern": "Synchronized trades, circular trades, and reversal trades to create artificial volume and a misleading appearance of trading activity in the KIL scrip on BSE.",
+  "investigation_period": {
+    "start": "2019-08-01",
+    "end": "2019-12-23"
+  },
+  "testability_verdict_pre_run": "PARTIALLY_TESTABLE",
+  "run_verdict": "UNTESTABLE",
+  "summary": "No data could be fetched for any scrip in this case. Likely delisted or wrong exchange.",
+  "data_quality_note": "KAVIT: 0 trading days fetched (94 fetch errors). UNTESTABLE for this scrip.",
+  "inapplicable_detectors": {
+    "coordinated_pump.py": "Requires account-level buy orders. BSE does not publish historical order-level or account-level trade data publicly.",
+    "circular_trading.py": "Requires account-level trade pairs. Not publicly available for BSE historical data.",
+    "spoofing.py": "Requires order lifecycle data. Not publicly available.",
+    "basis_distortion.py": "KIL is not an F&O scrip.",
+    "oi_manipulation.py": "KIL is not an F&O scrip.",
+    "option_pinning.py": "KIL is not an F&O scrip."
+  },
+  "scrip_results": {
+    "KAVIT": {
+      "days_in_manipulation_window": 0,
+      "days_flagged": 0,
+      "flagged_days_detail": []
+    }
+  }
+}
