@@ -12,6 +12,27 @@ asset class, so cross-asset patterns (e.g. spot-vs-future manipulation)
 can be queried in one place.
 """
 
+# ── PII Configuration ─────────────────────────────────────────────────────────
+# Controls whether evidence.py and sebi_report.py return raw account IDs or
+# their SHA-256 hashes when generating exportable logs.
+#
+# Default: True (hashed IDs). Override to False only when:
+#   1. An analyst explicitly needs the raw ID to cross-verify against
+#      exchange records (SEBI / NSE / BSE verification workflow), AND
+#   2. That access is being logged (see app/security/access_log.py).
+#
+# DESIGN INTENT: The raw account_id column is preserved in the database
+# because SEBI/exchange counterpart verification genuinely requires the
+# real ID. The point of this flag is to make outputting raw IDs a
+# DELIBERATE, LOGGED choice rather than an uncontrolled default leak.
+# Anyone calling evidence.py with raw IDs enabled must have a logged
+# justification in EvidenceAccessLog.
+#
+# Label: HEURISTIC default — the right default for most deployments.
+# A SEBI investigation unit with direct exchange feed integration may
+# legitimately set this to False for their workflow.
+EVIDENCE_LOG_USE_HASHED_ID: bool = True
+
 import enum
 import uuid
 from datetime import datetime
@@ -98,6 +119,12 @@ class Order(Base):
     id = Column(String(36), primary_key=True, default=gen_uuid)
     exchange_order_id = Column(String(64), nullable=False, index=True)
     account_id = Column(String(64), nullable=False, index=True)
+    # account_id_hash: salted SHA-256 of account_id. Nullable to allow
+    # rows ingested before this column was added (migration-safe additive
+    # column). Populated by the ingest layer via pii.hash_account_identifier().
+    # HARD RULE #1 compliance: account_id is NOT removed — it is still
+    # required for SEBI/exchange counterpart verification.
+    account_id_hash = Column(String(64), nullable=True, index=True)
     instrument_id = Column(String(36), ForeignKey("instruments.id"), nullable=False)
 
     side = Column(Enum(OrderSide), nullable=False)
@@ -126,6 +153,9 @@ class Trade(Base):
     buy_order_id = Column(String(36), ForeignKey("orders.id"), nullable=True)
     sell_order_id = Column(String(36), ForeignKey("orders.id"), nullable=True)
     instrument_id = Column(String(36), ForeignKey("instruments.id"), nullable=False)
+    # account_id_hash: same convention as Order.account_id_hash — nullable
+    # for migration safety. Trades derived from Orders inherit the hash.
+    account_id_hash = Column(String(64), nullable=True, index=True)
 
     price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False)
