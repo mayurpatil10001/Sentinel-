@@ -1,0 +1,49 @@
+{
+  "case_id": "PUMP-DUMP-2017-2020",
+  "order_reference": "Ex Parte Ad Interim Order-cum-Show Cause Notice, June 19, 2023 (SEBI Whole Time Member Order); Final Order June 2026 \u2014 In the Matter of Manipulation in Scrips including Mauria Udyog Ltd., 7NR Retail Ltd., GBL Industries Ltd., Darjeeling Ropeway Co. Ltd., Vishal Fabrics Ltd.",
+  "order_date": "2023-06-19",
+  "alleged_pattern": "Multi-phase pump-and-dump: (1) a network of 200+ connected entities created artificial price and volume through synchronized and circular trades in illiquid small-cap scrips; (2) bulk SMS campaigns recommended these scrips as 'buy' to retail investors; (3) the coordinated network offloaded their holdings at inflated prices to retail buyers.",
+  "investigation_period": {
+    "start": "2017-01-01",
+    "end": "2020-12-31"
+  },
+  "testability_verdict_pre_run": "PARTIALLY_TESTABLE",
+  "run_verdict": "UNTESTABLE",
+  "summary": "No data could be fetched for any scrip in this case. Likely delisted or wrong exchange.",
+  "data_quality_note": "MAURIUDYOG: 0 trading days fetched (501 fetch errors). UNTESTABLE for this scrip.\n7NRRETAIL: 0 trading days fetched (490 fetch errors). UNTESTABLE for this scrip.\nGBLIND: 0 trading days fetched (514 fetch errors). UNTESTABLE for this scrip.\nVISHALFAB: 0 trading days fetched (553 fetch errors). UNTESTABLE for this scrip.\nDARJROPE: 0 trading days fetched (490 fetch errors). UNTESTABLE for this scrip.",
+  "inapplicable_detectors": {
+    "coordinated_pump.py": "Requires account-level buy orders. Account-level data for small-cap scrip manipulation is not in public archives \u2014 specifically, the manipulation was designed to stay below bulk deal disclosure thresholds.",
+    "circular_trading.py": "Same reason: account-level trade pairs not available.",
+    "spoofing.py": "Requires order lifecycle data. Not publicly available.",
+    "basis_distortion.py": "None of these scrips are F&O instruments.",
+    "oi_manipulation.py": "None of these scrips are F&O instruments.",
+    "option_pinning.py": "None of these scrips are F&O instruments."
+  },
+  "scrip_results": {
+    "MAURIUDYOG": {
+      "days_in_manipulation_window": 0,
+      "days_flagged": 0,
+      "flagged_days_detail": []
+    },
+    "7NRRETAIL": {
+      "days_in_manipulation_window": 0,
+      "days_flagged": 0,
+      "flagged_days_detail": []
+    },
+    "GBLIND": {
+      "days_in_manipulation_window": 0,
+      "days_flagged": 0,
+      "flagged_days_detail": []
+    },
+    "VISHALFAB": {
+      "days_in_manipulation_window": 0,
+      "days_flagged": 0,
+      "flagged_days_detail": []
+    },
+    "DARJROPE": {
+      "days_in_manipulation_window": 0,
+      "days_flagged": 0,
+      "flagged_days_detail": []
+    }
+  }
+}
