@@ -45,12 +45,14 @@ This module NEVER silently returns empty/synthetic data on failure.
 """
 
 import logging
+import time
 from datetime import date
 
 import pandas as pd
 import requests
 
 from data.ingest.errors import BulkDealFetchError, BulkDealParseError
+from data.ingest.resilience import bulk_deals_circuit, retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -67,15 +69,56 @@ _BULK_HISTORICAL_URL = (
 )
 
 _TIMEOUT = 30
+_NSE_HOME = "https://www.nseindia.com/"
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/124.0.0.0 Safari/537.36"
     ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
     "Referer": "https://www.nseindia.com/",
-    "Accept": "text/html,application/xhtml+xml,*/*",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
 }
+_POST_COOKIE_DELAY = 0.8  # seconds after homepage before making archive request
+
+
+class _BulkSession:
+    """Session with NSE cookie handshake, shared across bulk/block deal fetches."""
+
+    def __init__(self) -> None:
+        self._session = requests.Session()
+        self._session.headers.update(_HEADERS)
+        self._cookies_initialised = False
+
+    def _ensure_cookies(self) -> None:
+        if self._cookies_initialised:
+            return
+        try:
+            resp = self._session.get(_NSE_HOME, timeout=_TIMEOUT)
+            resp.raise_for_status()
+            self._cookies_initialised = True
+            logger.debug("NSE session cookies obtained for bulk deals.")
+            time.sleep(_POST_COOKIE_DELAY)
+        except requests.exceptions.RequestException as exc:
+            logger.warning(
+                "NSE homepage cookie handshake failed for bulk deals: %s. "
+                "Proceeding without session cookie.",
+                exc
+            )
+
+    def get(self, url: str) -> requests.Response:
+        self._ensure_cookies()
+        return self._session.get(url, timeout=_TIMEOUT)
+
+
+_shared_bulk_session = _BulkSession()
 
 # Minimum columns we need to parse a bulk/block deal record
 _BULK_REQUIRED_COLS = {"symbol", "client_name", "buy_sell", "quantity", "price"}
@@ -83,23 +126,39 @@ _BULK_REQUIRED_COLS = {"symbol", "client_name", "buy_sell", "quantity", "price"}
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+@retry_with_backoff(
+    max_retries=3,
+    base_delay=2.0,
+    max_delay=30.0,
+    retryable_exceptions=(BulkDealFetchError,),
+)
 def _fetch_csv(url: str, deal_type: str) -> pd.DataFrame:
     """
-    Fetches a CSV from `url` and returns a raw DataFrame.
-    Raises BulkDealFetchError on HTTP errors, BulkDealParseError on
+    Fetches a CSV from ``url`` using the shared NSE session.
+    Applies retry_with_backoff for retryable failures and circuit breaker
+    to stop hammering a failing source.
+
+    Raises BulkDealFetchError on HTTP errors (non-retryable 403/404 immediately,
+    retryable 5xx after exhausing retries). Raises BulkDealParseError on
     CSV parse errors.
     """
+    bulk_deals_circuit.before_request()
     try:
-        resp = requests.get(url, headers=_HEADERS, timeout=_TIMEOUT)
+        resp = _shared_bulk_session.get(url)
     except requests.exceptions.RequestException as exc:
+        bulk_deals_circuit.on_failure()
         raise BulkDealFetchError(url, None, str(exc)) from exc
 
     if resp.status_code != 200:
+        if resp.status_code in (500, 502, 503, 504, 429):
+            bulk_deals_circuit.on_failure()
         raise BulkDealFetchError(
             url, resp.status_code,
-            f"NSE returned non-200 for {deal_type} deals. "
-            f"The file may not yet be available for today."
+            f"NSE returned HTTP {resp.status_code} for {deal_type} deals. "
+            f"For 403: IP block — see docs/NSE_ACCESS_LIMITATIONS.md. "
+            f"For 404: file may not yet be available for today."
         )
+    bulk_deals_circuit.on_success()
 
     try:
         # NSE's bulk CSV uses various encodings; latin-1 handles most edge cases

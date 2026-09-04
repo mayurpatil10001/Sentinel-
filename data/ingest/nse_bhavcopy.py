@@ -37,6 +37,7 @@ It NEVER silently returns synthetic/empty data — the caller must handle the er
 
 import io
 import logging
+import time
 import zipfile
 from datetime import date, timedelta
 
@@ -44,6 +45,7 @@ import pandas as pd
 import requests
 
 from data.ingest.errors import BhavcopyFetchError, BhavcopyParseError
+from data.ingest.resilience import bhavcopy_circuit, retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -72,17 +74,87 @@ _MONTH_ABBR = {
 # Request timeout (seconds). NSE's archive server can be slow.
 _TIMEOUT = 30
 
-# NSE requires a browser-like User-Agent; bare requests get 403.
+# NSE homepage used for cookie handshake before archive downloads.
+# NSE's CDN checks for a valid session cookie on some archive endpoints.
+# Visiting the homepage first is the same approach used by nse_option_chain.py.
+_NSE_HOME = "https://www.nseindia.com/"
+
+# Browser-realistic headers matching what Chrome 124 sends.
+# NSE uses bot detection that checks UA, Referer, and Accept-Language.
+# NOTE: These headers significantly improve success rate from residential
+# IPs. They do NOT guarantee access from datacenter/cloud IPs — NSE's
+# IP reputation layer operates at a network level that headers cannot bypass.
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/124.0.0.0 Safari/537.36"
     ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
     "Accept-Encoding": "gzip, deflate, br",
-    "Accept": "*/*",
     "Referer": "https://www.nseindia.com/",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "same-origin",
 }
+
+# Minimum gap between cookie handshake and archive download (seconds).
+# NSE's behavioral analysis may flag requests that arrive too fast after
+# the homepage visit (no human browses that fast).
+_POST_COOKIE_DELAY = 0.8  # HEURISTIC: 0.8s — mimics human navigation pace
+
+
+class _BhavSession:
+    """
+    A requests.Session with NSE cookie handshake for archive downloads.
+
+    NSE's bot protection checks for a valid session cookie even on archive
+    downloads. This class performs the same homepage visit that
+    nse_option_chain._NSESession does, before making archive requests.
+
+    IMPORTANT: This improves access from residential IPs. It does NOT
+    guarantee access from datacenter IPs blocked by IP reputation.
+    See docs/NSE_ACCESS_LIMITATIONS.md.
+    """
+
+    def __init__(self) -> None:
+        self._session = requests.Session()
+        self._session.headers.update(_HEADERS)
+        self._cookies_initialised = False
+
+    def _ensure_cookies(self) -> None:
+        if self._cookies_initialised:
+            return
+        try:
+            resp = self._session.get(_NSE_HOME, timeout=_TIMEOUT)
+            resp.raise_for_status()
+            self._cookies_initialised = True
+            logger.debug("NSE session cookies obtained for bhavcopy.")
+            time.sleep(_POST_COOKIE_DELAY)
+        except requests.exceptions.RequestException as exc:
+            # Cookie failure is non-fatal — we can still attempt the archive
+            # download without a cookie (it may still succeed from residential IPs).
+            logger.warning(
+                "NSE homepage cookie handshake failed: %s. "
+                "Proceeding without session cookie — archive download may fail.",
+                exc
+            )
+
+    def get(self, url: str) -> bytes:
+        """Perform a cookie-authenticated GET to the NSE archive and return raw bytes."""
+        self._ensure_cookies()
+        resp = self._session.get(url, timeout=_TIMEOUT)
+        return resp
+
+
+# Module-level shared session (avoids re-doing cookie handshake on every call)
+_shared_bhav_session = _BhavSession()
 
 
 # ── URL builders ─────────────────────────────────────────────────────────────
@@ -117,22 +189,43 @@ def _delivery_url(trading_date: date) -> str:
 
 # ── Core fetchers ────────────────────────────────────────────────────────────
 
+@retry_with_backoff(
+    max_retries=3,
+    base_delay=2.0,
+    max_delay=30.0,
+    retryable_exceptions=(BhavcopyFetchError,),
+)
 def _fetch_raw(url: str) -> bytes:
     """
-    HTTP GET with timeout and error handling.
-    Raises BhavcopyFetchError on any failure — never returns None.
+    HTTP GET with timeout, error handling, retry, and circuit breaker.
+
+    Uses the module-level session (with NSE homepage cookie) rather than
+    bare requests.get. Raises BhavcopyFetchError on any failure.
+
+    Non-retryable failures (403, 404) propagate immediately — they will not
+    be retried by retry_with_backoff.
+
+    Retryable failures (5xx, network timeouts) are retried up to 3 times
+    with exponential backoff and full jitter.
     """
+    bhavcopy_circuit.before_request()  # raises CircuitBreakerOpenError if OPEN
     try:
-        resp = requests.get(url, headers=_HEADERS, timeout=_TIMEOUT)
+        resp = _shared_bhav_session.get(url)
     except requests.exceptions.RequestException as exc:
+        bhavcopy_circuit.on_failure()
         raise BhavcopyFetchError(url, None, str(exc)) from exc
 
     if resp.status_code != 200:
+        if resp.status_code in (500, 502, 503, 504, 429):
+            bhavcopy_circuit.on_failure()
+        # Non-retryable statuses (403, 404, etc.) are raised immediately
         raise BhavcopyFetchError(
             url, resp.status_code,
-            f"NSE returned non-200 status. The date may be a non-trading day "
-            f"or the archive may not yet be available."
+            f"NSE returned HTTP {resp.status_code}. "
+            f"For 403: IP reputation block — see docs/NSE_ACCESS_LIMITATIONS.md. "
+            f"For 404: non-trading day or archive not yet available."
         )
+    bhavcopy_circuit.on_success()
     return resp.content
 
 

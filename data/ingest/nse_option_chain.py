@@ -54,6 +54,7 @@ import pandas as pd
 import requests
 
 from data.ingest.errors import OptionChainFetchError, OptionChainParseError
+from data.ingest.resilience import option_chain_circuit, retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -83,12 +84,21 @@ _SESSION_HEADERS = {
     "Accept-Encoding": "gzip, deflate, br",
     "Referer": "https://www.nseindia.com/",
     "Connection": "keep-alive",
+    "DNT": "1",
     "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124"',
     "sec-ch-ua-mobile": "?0",
     "sec-ch-ua-platform": '"Windows"',
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin",
 }
 
 _MIN_REQUEST_GAP_SECONDS = 1.0  # courtesy rate limit
+# Delay between NSE homepage cookie handshake and first API call.
+# Real browsers take some time to navigate before hitting the API endpoint.
+# Too fast = behavioral fingerprinting may flag as a bot.
+_POST_COOKIE_DELAY = 1.0  # HEURISTIC: 1.0s — slightly longer than bhavcopy
+                           # because the option chain API is more aggressively guarded
 
 
 # ── Session management ────────────────────────────────────────────────────────
@@ -115,39 +125,70 @@ class _NSESession:
             resp.raise_for_status()
             self._cookies_initialised = True
             logger.debug("NSE session cookies obtained.")
+            # Pause after homepage: real browsers take time to navigate
+            time.sleep(_POST_COOKIE_DELAY)
+        except requests.exceptions.HTTPError as exc:
+            # raise_for_status() throws HTTPError for 4xx/5xx.
+            # Preserve the status code so retry_with_backoff can correctly
+            # classify 403 as NON-RETRYABLE (without this, status_code=None
+            # and the retry misclassifies it as a network-level failure).
+            status_code = exc.response.status_code if exc.response is not None else None
+            raise OptionChainFetchError(
+                _NSE_HOME, status_code,
+                f"NSE homepage returned HTTP {status_code}. "
+                f"For 403: IP reputation block from this environment — "
+                f"see docs/NSE_ACCESS_LIMITATIONS.md. Error: {exc}"
+            ) from exc
         except requests.exceptions.RequestException as exc:
+            # Pure network failure (timeout, connection refused) — no HTTP response
             raise OptionChainFetchError(
                 _NSE_HOME, None,
                 f"Could not establish NSE session (homepage fetch failed): {exc}"
             ) from exc
+
 
     def _rate_limit(self) -> None:
         elapsed = time.monotonic() - self._last_request_at
         if elapsed < _MIN_REQUEST_GAP_SECONDS:
             time.sleep(_MIN_REQUEST_GAP_SECONDS - elapsed)
 
+    @retry_with_backoff(
+        max_retries=2,
+        base_delay=2.0,
+        max_delay=20.0,
+        retryable_exceptions=(OptionChainFetchError,),
+    )
     def get(self, url: str) -> dict:
         """
         Makes a rate-limited, cookie-authenticated GET request to NSE's API.
         Returns the parsed JSON response dict.
         Raises OptionChainFetchError on HTTP/network failure.
+
+        Non-retryable failures (403, 404) propagate immediately.
+        Retryable failures (5xx, network) are retried up to 2 times.
+        Circuit breaker prevents hammering after repeated failures.
         """
         self._ensure_cookies()
         self._rate_limit()
 
+        option_chain_circuit.before_request()
         try:
             resp = self._session.get(url, timeout=_TIMEOUT)
             self._last_request_at = time.monotonic()
         except requests.exceptions.RequestException as exc:
+            option_chain_circuit.on_failure()
             raise OptionChainFetchError(url, None, str(exc)) from exc
 
         if resp.status_code != 200:
+            if resp.status_code in (500, 502, 503, 504, 429):
+                option_chain_circuit.on_failure()
             raise OptionChainFetchError(
                 url, resp.status_code,
-                f"NSE API returned non-200. "
-                f"If status is 401/403, the session may have expired — "
-                f"reinstantiate the session object."
+                f"NSE API returned HTTP {resp.status_code}. "
+                f"For 403: IP/bot block — see docs/NSE_ACCESS_LIMITATIONS.md. "
+                f"For 401/403: session may have expired — reinstantiate session."
             )
+        option_chain_circuit.on_success()
 
         # Check we actually got JSON, not an HTML block page
         content_type = resp.headers.get("Content-Type", "")
@@ -155,9 +196,8 @@ class _NSESession:
             raise OptionChainFetchError(
                 url, resp.status_code,
                 "NSE returned an HTML page instead of JSON. "
-                "This usually means the session was rejected. "
-                "The option chain is only available during market hours "
-                "or with a valid session cookie."
+                "This usually means the session was rejected or the option chain "
+                "is only available during market hours (09:15–15:30 IST)."
             )
 
         try:

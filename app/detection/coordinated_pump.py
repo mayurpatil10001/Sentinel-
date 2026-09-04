@@ -314,9 +314,16 @@ def detect_coordinated_pump(
 
     false_positive_warning = ""
     if is_illiquid:
+        # avg_daily_volume_30d may be None for newly listed instruments;
+        # guard against NoneType format error.
+        vol_display = (
+            f"{instrument.avg_daily_volume_30d:,.0f}"
+            if instrument.avg_daily_volume_30d is not None
+            else "<unknown>"
+        )
         false_positive_warning = (
             f"WARNING: {instrument.symbol} is illiquid "
-            f"({instrument.avg_daily_volume_30d:,.0f} shares/day avg). "
+            f"({vol_display} shares/day avg). "
             f"Any unusual buy interest can trip volume thresholds in illiquid names "
             f"without implying manipulation. Score discounted 30%. Requires analyst review."
         )

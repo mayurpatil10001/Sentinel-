@@ -159,6 +159,21 @@ def detect_basis_distortion(
     HARD RULE #1: raises ValueError for invalid inputs (no synthetic fallback).
     HARD RULE #3: returned signal includes full explanation of the calculation.
     """
+    import math
+
+    # NaN inputs must be rejected explicitly: NaN comparisons (e.g. NaN <= 0)
+    # are always False in Python, so NaN would silently pass the positivity check
+    # and produce a NaN fair_value_basis — which would never trigger a signal.
+    if isinstance(spot_price, float) and math.isnan(spot_price):
+        raise ValueError(
+            f"spot_price is NaN — cannot compute fair value basis. "
+            "Pass a valid positive spot price."
+        )
+    if isinstance(futures_price, float) and math.isnan(futures_price):
+        raise ValueError(
+            f"futures_price is NaN — cannot compute fair value basis. "
+            "Pass a valid positive futures price."
+        )
     if spot_price <= 0:
         raise ValueError(
             f"spot_price must be positive, got {spot_price}. "
@@ -174,6 +189,7 @@ def detect_basis_distortion(
             f"(snapshot_time: {snapshot_time.date()}). "
             "Pass the correct expiry date."
         )
+
 
     days_to_expiry = (expiry_date - snapshot_time.date()).days
 

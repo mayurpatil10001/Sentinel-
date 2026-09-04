@@ -124,3 +124,50 @@ class OptionChainParseError(IngestError):
 
     def __init__(self, message: str = ""):
         super().__init__(f"Option chain parse failed: {message}")
+
+
+# ── Resilience layer ─────────────────────────────────────────────────────────
+
+class CircuitBreakerOpenError(IngestError):
+    """
+    Raised when a CircuitBreaker is in the OPEN state and declines to
+    forward the request to the underlying source.
+
+    The circuit opened because the source exceeded its consecutive-failure
+    threshold (e.g. 5 straight 503s or connection resets). The system is
+    in cooldown and will not send further requests until ``cooldown_remaining``
+    seconds have elapsed — at which point one probe request will be allowed.
+
+    This is NOT an indication that the underlying source is permanently
+    broken. It is a protective measure to avoid hammering a degraded source.
+    """
+
+    def __init__(self, source: str, cooldown_remaining: float):
+        self.source = source
+        self.cooldown_remaining = cooldown_remaining
+        super().__init__(
+            f"Circuit breaker OPEN for source '{source}'. "
+            f"Cooldown remaining: {cooldown_remaining:.0f}s. "
+            f"The source exceeded its consecutive failure threshold. "
+            f"Not sending further requests until cooldown expires."
+        )
+
+
+class MaxRetriesExceededError(IngestError):
+    """
+    Raised when ``retry_with_backoff`` exhausts all retry attempts.
+
+    This means the failure was classified as RETRYABLE (e.g. repeated 503s,
+    connection resets) but did not recover within the configured retry window.
+    The caller should treat this like a persistent transient failure and
+    use ``determine_fallback()`` (see fallback_strategy.py) to decide next action.
+    """
+
+    def __init__(self, source: str, attempts: int, last_error: str):
+        self.source = source
+        self.attempts = attempts
+        self.last_error = last_error
+        super().__init__(
+            f"Max retries exceeded for source '{source}' "
+            f"after {attempts} attempt(s). Last error: {last_error}"
+        )

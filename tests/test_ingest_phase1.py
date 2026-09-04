@@ -252,15 +252,30 @@ def test_bhavcopy_http_404_raises_fetch_error():
 
 @responses_lib.activate
 def test_bhavcopy_http_503_raises_fetch_error():
-    """Server error raises BhavcopyFetchError with the correct status code."""
+    """
+    Server error raises an IngestError (BhavcopyFetchError or
+    MaxRetriesExceededError after exhausting retries).
+
+    Phase 6 note: 503 is RETRYABLE. The retry decorator fires 4 times
+    (1 initial + 3 retries). Each attempt re-tries the homepage handshake,
+    so we register the homepage mock 4 times.
+    """
+    from data.ingest.errors import IngestError, MaxRetriesExceededError
     trading_date = date(2024, 1, 2)
     url = _bhavcopy_url(trading_date)
+    # Homepage mock registered 4 times (one per retry attempt)
+    for _ in range(4):
+        responses_lib.add(responses_lib.GET, _NSE_HOME_URL, status=200)
+    responses_lib.add(responses_lib.GET, url, status=503)
+    responses_lib.add(responses_lib.GET, url, status=503)
+    responses_lib.add(responses_lib.GET, url, status=503)
     responses_lib.add(responses_lib.GET, url, status=503)
 
-    with pytest.raises(BhavcopyFetchError) as exc_info:
+    with pytest.raises(MaxRetriesExceededError) as exc_info:
         fetch_bhavcopy(trading_date)
 
-    assert exc_info.value.status_code == 503
+    assert exc_info.value.attempts == 4
+    assert "503" in exc_info.value.last_error
 
 
 @responses_lib.activate
@@ -313,12 +328,20 @@ def test_bhavcopy_no_synthetic_fallback_on_error():
     Confirms the module does NOT silently return a DataFrame on failure.
     Any HTTP error must propagate — this would catch a hypothetical
     'except: return mock_df' anti-pattern.
+
+    Phase 6 note: 500 is RETRYABLE. After exhausting retries, the decorator
+    raises MaxRetriesExceededError. We register 4 homepage mocks (one per
+    attempt) and 4 archive mocks, and check that some IngestError is raised.
     """
+    from data.ingest.errors import IngestError, MaxRetriesExceededError
     trading_date = date(2024, 1, 5)
     url = _bhavcopy_url(trading_date)
-    responses_lib.add(responses_lib.GET, url, status=500)
+    for _ in range(4):
+        responses_lib.add(responses_lib.GET, _NSE_HOME_URL, status=200)
+    for _ in range(4):
+        responses_lib.add(responses_lib.GET, url, status=500)
 
-    with pytest.raises(BhavcopyFetchError):
+    with pytest.raises(IngestError):
         fetch_bhavcopy(trading_date)
 
 
@@ -397,11 +420,22 @@ def test_bulk_deals_malformed_csv_raises_parse_error():
 
 @responses_lib.activate
 def test_bulk_deals_server_error_does_not_return_empty_df():
-    """Network error must raise — never silently return empty data."""
-    responses_lib.add(responses_lib.GET, _BULK_URL, status=500)
+    """
+    Network error must raise — never silently return empty data.
 
-    with pytest.raises(BulkDealFetchError):
+    Phase 6 note: 500 is RETRYABLE. The retry decorator fires 4 times
+    (1 initial + 3 retries). Register the homepage mock 4 times and the
+    archive URL 4 times to account for all retry attempts.
+    """
+    from data.ingest.errors import IngestError
+    for _ in range(4):
+        responses_lib.add(responses_lib.GET, _NSE_HOME_URL, status=200)
+    for _ in range(4):
+        responses_lib.add(responses_lib.GET, _BULK_URL, status=500)
+
+    with pytest.raises(IngestError):
         fetch_bulk_deals()
+
 
 
 # ════════════════════════════════════════════════════════════════════════════
