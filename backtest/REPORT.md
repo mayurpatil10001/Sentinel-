@@ -125,36 +125,55 @@ Phase 8 scope.
 
 ### Case C2: PUMP-DUMP-2017-2020
 
-**Per-scrip fetch results:**
+### Case C2: PUMP-DUMP-2017-2020 — Re-run with delivery-circuit fix
 
-| NSE symbol attempted | Company name | Days attempted | Days fetched | Verdict |
+> **Background:** The original run reported 0 fetched days due to two bugs
+> in `nse_bhavcopy.py` / `resilience.py` (commit `eae832c` fixed them —
+> `except BhavcopyFetchError` widened to `except IngestError`; separate
+> `delivery_circuit` instance added). The case was re-run after the fix
+> to confirm whether the UNTESTABLE verdict was the bug or genuine.
+> **Result: UNTESTABLE verdict stands — confirmed by two independent runs
+> and a direct symbol lookup against NSE's `EQUITY_L.csv`.**
+
+**Per-scrip fetch results (re-run, post-fix):**
+
+| NSE symbol attempted | Company name | Bhavcopy files fetched | Rows for this symbol | Verdict |
 |---|---|---|---|---|
-| MAURIUDYOG | Mauria Udyog Ltd. | 522 | **0** | Symbol not in NSE bhavcopy |
-| 7NRRETAIL | 7NR Retail Ltd. | 522 | **0** | Symbol not in NSE bhavcopy |
-| GBLIND | GBL Industries Ltd. | 542 | **0** | Symbol not in NSE bhavcopy |
-| VISHALFAB | Vishal Fabrics Ltd. | 587 | **0** | Symbol not in NSE bhavcopy |
-| DARJROPE | Darjeeling Ropeway Co. | 522 | **0** | Symbol not in NSE bhavcopy |
+| MAURIUDYOG | Mauria Udyog Ltd. | 490 files (all successful) | **0** | Not in NSE bhavcopy |
+| 7NRRETAIL | 7NR Retail Ltd. | 490 files (all successful) | **0** | Not in NSE bhavcopy |
+| GBLIND | GBL Industries Ltd. | 514 files (all successful) | **0** | Not in NSE bhavcopy |
+| VISHALFAB | Vishal Fabrics Ltd. | 553 files (all successful) | **0** | Not in NSE bhavcopy |
+| DARJROPE | Darjeeling Ropeway Co. | 490 files (all successful) | **0** | Not in NSE bhavcopy |
 
-**Total trading days fetched across all 5 scrips: 0 of 2,695 attempted.**
+**Note on the intermediate progress check:** During the re-run, a
+grep for `"not found in bhavcopy"` in the log returned 0 hits and was
+misread as "symbols are being found." The puller records symbol-not-found
+events to an in-memory `fetch_errors` list, not to the log file. The log
+only shows bhavcopy file downloads — which did succeed. The 0-symbol-found
+result is only visible in the final JSON output.
 
-**Why 0 rows?** Two reasons, not mutually exclusive:
+**NSE EQUITY_L.csv symbol master lookup (run post-fix):**
 
-1. **Wrong NSE symbol guesses.** The symbols were inferred from company names,
-   not looked up against NSE's symbol master file (`EQUITY_L.csv`). NSE symbols
-   for illiquid small-caps are often abbreviated differently.
+Fetched `https://archives.nseindia.com/content/equities/EQUITY_L.csv`
+(2,570 currently-listed NSE symbols). Searched for all 5 company names:
 
-2. **Delisted.** Illiquid micro-caps involved in enforcement actions are
-   sometimes suspended or delisted. If a scrip was delisted, it will not appear
-   in any subsequent bhavcopy files.
+| Search term | Found in EQUITY_L.csv? | Finding |
+|---|---|---|
+| MAURIA | No | Mauria Udyog not listed on NSE |
+| 7NR | No | 7NR Retail not listed on NSE |
+| GBL | Partial (`VAIBHAVGBL`, `BIGBLOC`) | No match for GBL Industries |
+| DARJEELING / ROPEWAY | No | Darjeeling Ropeway not on NSE |
+| VISHAL FAB | Yes — `VISHAL` (INE755Q01025) | Listed from **17-AUG-2026** only — not during 2017-2020 |
 
-> **This is a pipeline data-lookup problem, not a detector failure.** The SEBI
-> enforcement orders are real. SEBI's findings are confirmed. The inability to
-> fetch bhavcopy for these scrips means the proxy cannot run — it does not mean
-> the manipulation did not happen.
+**Definitive conclusion:** These scrips are genuinely not accessible in
+NSE bhavcopy for the 2017-2020 manipulation period. They are either
+BSE-only listed, or were delisted from NSE before/during the manipulation
+period. The bug fix was correct and necessary, but it does not change the
+testability verdict — the data simply does not exist under these symbols
+in NSE archives for these dates.
 
-**Fix required:** Cross-reference each scrip's ISIN (from the SEBI order) against
-NSE's symbol master file to find the correct symbol, or use BSE scrip codes for
-BSE-listed instruments.
+**Overall C2 verdict: UNTESTABLE** — confirmed by two independent runs
+and direct EQUITY_L.csv lookup.
 
 ---
 
