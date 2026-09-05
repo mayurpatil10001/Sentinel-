@@ -1,4 +1,10 @@
-<!DOCTYPE html>
+"""Build sentinel_stakeholder_demo.html — run once to generate the demo file."""
+import pathlib
+
+OUT = pathlib.Path(r"D:\Sentinel\demo\sentinel_stakeholder_demo.html")
+OUT.parent.mkdir(parents=True, exist_ok=True)
+
+HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -697,4 +703,9 @@ function startReplay(){
 document.addEventListener("DOMContentLoaded",function(){renderChart(2);setTimeout(startReplay,800);});
 </script>
 </body>
-</html>
+</html>"""
+
+OUT.write_text(HTML, encoding="utf-8")
+sz = OUT.stat().st_size
+print(f"Written: {OUT}")
+print(f"Size: {sz:,} bytes ({sz//1024} KB)")
