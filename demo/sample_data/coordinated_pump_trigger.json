@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "coordinated_pump",
+    "scenario": "trigger",
+    "import": "from app.detection.coordinated_pump import detect_coordinated_pump",
+    "call": "detect_coordinated_pump(buy_orders, instrument, window_start, window_end, prior_trade_dates, first_seen_dates)"
+  },
+  "input": {
+    "instrument": {
+      "symbol": "TINYLTD",
+      "exchange": "NSE",
+      "avg_daily_volume_30d": 30000
+    },
+    "orders": [
+      {
+        "account_id": "PUMP-01",
+        "side": "OrderSide.BUY",
+        "quantity": 2000,
+        "price": 3.2,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:30:00"
+      },
+      {
+        "account_id": "PUMP-02",
+        "side": "OrderSide.BUY",
+        "quantity": 2000,
+        "price": 3.21,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:33:00"
+      },
+      {
+        "account_id": "PUMP-03",
+        "side": "OrderSide.BUY",
+        "quantity": 2000,
+        "price": 3.22,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:36:00"
+      },
+      {
+        "account_id": "PUMP-04",
+        "side": "OrderSide.BUY",
+        "quantity": 2000,
+        "price": 3.23,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:39:00"
+      },
+      {
+        "account_id": "PUMP-05",
+        "side": "OrderSide.BUY",
+        "quantity": 2000,
+        "price": 3.24,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:42:00"
+      },
+      {
+        "account_id": "PUMP-06",
+        "side": "OrderSide.BUY",
+        "quantity": 2000,
+        "price": 3.25,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:45:00"
+      },
+      {
+        "account_id": "PUMP-07",
+        "side": "OrderSide.BUY",
+        "quantity": 2000,
+        "price": 3.2600000000000002,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:48:00"
+      }
+    ],
+    "window_start": "2019-06-10T10:30:00",
+    "window_end": "2019-06-10T11:00:00",
+    "prior_trade_dates_summary": "all 7 accounts dormant >60 days",
+    "first_seen_dates_summary": "all 7 accounts new (<7 days)"
+  },
+  "output": {
+    "fired": true,
+    "score": 0.5446,
+    "severity": "medium",
+    "num_accounts": 7,
+    "dormant_accounts": [
+      "PUMP-01",
+      "PUMP-05",
+      "PUMP-07",
+      "PUMP-06",
+      "PUMP-03",
+      "PUMP-04",
+      "PUMP-02"
+    ],
+    "new_accounts": [
+      "PUMP-01",
+      "PUMP-05",
+      "PUMP-07",
+      "PUMP-06",
+      "PUMP-03",
+      "PUMP-04",
+      "PUMP-02"
+    ],
+    "combined_buy_volume": 14000,
+    "volume_multiple": 6.066666666666666,
+    "is_illiquid": true,
+    "explanation": "Coordinated buy-side pump detected for TINYLTD (NSE) in window 10:30\u201311:00. 7 distinct accounts placed buy orders with combined volume of 14,000 shares (6.1x the instrument's normal volume for this window). Threshold: >= 3 accounts and >= 5x normal volume. 7 of 7 accounts were dormant in this instrument for >= 30 days before this window (PUMP-01, PUMP-05, PUMP-07...) \u2014 sudden reactivation of dormant accounts raises suspicion of coordinated entry. 7 accounts are newly active (first seen within 7 days). WARNING: TINYLTD is illiquid (30,000 shares/day avg). Any unusual buy interest can trip volume thresholds in illiquid names without implying manipulation. Score discounted 30%. Requires analyst review.",
+    "false_positive_warning": "WARNING: TINYLTD is illiquid (30,000 shares/day avg). Any unusual buy interest can trip volume thresholds in illiquid names without implying manipulation. Score discounted 30%. Requires analyst review."
+  }
+}

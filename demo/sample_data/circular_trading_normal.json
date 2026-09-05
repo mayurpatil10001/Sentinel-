@@ -1,0 +1,46 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "circular_trading",
+    "scenario": "normal",
+    "import": "from app.detection.circular_trading import detect_circular_trading",
+    "call": "detect_circular_trading(trades, instrument, window_start, window_end)"
+  },
+  "input": {
+    "trades": [
+      {
+        "seller": "IND-A",
+        "buyer": "IND-B",
+        "quantity": 200,
+        "price": 12.5,
+        "timestamp": "2018-03-15T10:00:00"
+      },
+      {
+        "seller": "IND-C",
+        "buyer": "IND-D",
+        "quantity": 150,
+        "price": 12.55,
+        "timestamp": "2018-03-15T10:10:00"
+      },
+      {
+        "seller": "IND-E",
+        "buyer": "IND-F",
+        "quantity": 300,
+        "price": 12.48,
+        "timestamp": "2018-03-15T10:25:00"
+      },
+      {
+        "seller": "IND-B",
+        "buyer": "IND-G",
+        "quantity": 180,
+        "price": 12.6,
+        "timestamp": "2018-03-15T10:40:00"
+      }
+    ]
+  },
+  "output": {
+    "fired": false,
+    "num_signals": 0,
+    "reason": "independent accounts, no closed cycle possible"
+  }
+}

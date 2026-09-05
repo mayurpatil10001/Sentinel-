@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "oi_manipulation",
+    "scenario": "trigger",
+    "import": "from app.detection.oi_manipulation import detect_oi_concentration",
+    "call": "detect_oi_concentration(chain_df, symbol, exchange, snapshot_time)"
+  },
+  "input": {
+    "symbol": "NIFTY",
+    "exchange": "NSE",
+    "snapshot_time": "2024-11-28T12:00:00",
+    "underlying_spot": 24500.0,
+    "chain_rows": [
+      {
+        "strike": 24000,
+        "option_type": "CE",
+        "oi": 80000
+      },
+      {
+        "strike": 24200,
+        "option_type": "CE",
+        "oi": 120000
+      },
+      {
+        "strike": 24400,
+        "option_type": "CE",
+        "oi": 200000
+      },
+      {
+        "strike": 24600,
+        "option_type": "CE",
+        "oi": 180000
+      },
+      {
+        "strike": 24800,
+        "option_type": "CE",
+        "oi": 90000
+      },
+      {
+        "strike": 24000,
+        "option_type": "PE",
+        "oi": 504000
+      },
+      {
+        "strike": 24200,
+        "option_type": "PE",
+        "oi": 220000
+      },
+      {
+        "strike": 24400,
+        "option_type": "PE",
+        "oi": 180000
+      },
+      {
+        "strike": 24600,
+        "option_type": "PE",
+        "oi": 150000
+      },
+      {
+        "strike": 24800,
+        "option_type": "PE",
+        "oi": 146000
+      }
+    ]
+  },
+  "output": {
+    "fired": true,
+    "score": 0.18461538461538463,
+    "severity": "low",
+    "strike": 24000.0,
+    "option_type": "PE",
+    "concentration_ratio": 0.42,
+    "strike_oi": 504000,
+    "total_chain_oi": 1200000,
+    "moneyness_pct": -2.0408163265306123,
+    "explanation": "Abnormal OI concentration in NIFTY PE options (expiry 2024-12-26): strike 24,000 holds 42.0% of total PE chain OI (504,000 / 1,200,000 contracts). Threshold: 35%. Strike is 2.0% OTM (spot: 24,500.00). High OI concentration in a near ATM strike suggests possible pinning target. Threshold source: unvalidated 95th-percentile estimate from NSE NIFTY chains \u2014 needs backtesting before use in enforcement referrals."
+  }
+}

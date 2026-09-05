@@ -1,0 +1,69 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "oi_manipulation",
+    "scenario": "normal",
+    "import": "from app.detection.oi_manipulation import detect_oi_concentration",
+    "call": "detect_oi_concentration(chain_df, symbol, exchange, snapshot_time)"
+  },
+  "input": {
+    "chain_rows": [
+      {
+        "strike": 24200,
+        "option_type": "PE",
+        "oi": 300000
+      },
+      {
+        "strike": 24400,
+        "option_type": "PE",
+        "oi": 280000
+      },
+      {
+        "strike": 24600,
+        "option_type": "PE",
+        "oi": 260000
+      },
+      {
+        "strike": 24800,
+        "option_type": "PE",
+        "oi": 240000
+      },
+      {
+        "strike": 25000,
+        "option_type": "PE",
+        "oi": 220000
+      },
+      {
+        "strike": 24200,
+        "option_type": "CE",
+        "oi": 290000
+      },
+      {
+        "strike": 24400,
+        "option_type": "CE",
+        "oi": 310000
+      },
+      {
+        "strike": 24600,
+        "option_type": "CE",
+        "oi": 270000
+      },
+      {
+        "strike": 24800,
+        "option_type": "CE",
+        "oi": 230000
+      },
+      {
+        "strike": 25000,
+        "option_type": "CE",
+        "oi": 200000
+      }
+    ],
+    "note": "balanced OI \u2014 max single strike share ~22%, below 35% threshold"
+  },
+  "output": {
+    "fired": false,
+    "num_signals": 0,
+    "reason": "OI well-distributed; no strike exceeds OI_CONCENTRATION_THRESHOLD"
+  }
+}

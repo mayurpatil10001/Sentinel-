@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "coordinated_pump",
+    "scenario": "normal",
+    "import": "from app.detection.coordinated_pump import detect_coordinated_pump",
+    "call": "detect_coordinated_pump(...)"
+  },
+  "input": {
+    "orders": [
+      {
+        "account_id": "ORG-1",
+        "side": "OrderSide.BUY",
+        "quantity": 200,
+        "price": 3.15,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:30:00"
+      },
+      {
+        "account_id": "ORG-2",
+        "side": "OrderSide.BUY",
+        "quantity": 200,
+        "price": 3.17,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:38:00"
+      },
+      {
+        "account_id": "ORG-3",
+        "side": "OrderSide.BUY",
+        "quantity": 200,
+        "price": 3.19,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:46:00"
+      },
+      {
+        "account_id": "ORG-4",
+        "side": "OrderSide.BUY",
+        "quantity": 200,
+        "price": 3.21,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2019-06-10T10:54:00"
+      }
+    ],
+    "note": "4 active accounts, small volume, staggered by 8 minutes"
+  },
+  "output": {
+    "fired": false,
+    "score": null,
+    "reason": "volume < VOLUME_SPIKE_MULTIPLE \u00d7 normal OR < MIN_COORDINATING_ACCOUNTS"
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "circular_trading",
+    "scenario": "trigger",
+    "import": "from app.detection.circular_trading import detect_circular_trading",
+    "call": "detect_circular_trading(trades, instrument, window_start, window_end)"
+  },
+  "input": {
+    "instrument": {
+      "symbol": "KAVITIND",
+      "exchange": "NSE",
+      "avg_daily_volume_30d": 45000
+    },
+    "trades": [
+      {
+        "seller": "ACC-A",
+        "buyer": "ACC-B",
+        "quantity": 3000,
+        "price": 12.5,
+        "timestamp": "2018-03-15T10:00:00"
+      },
+      {
+        "seller": "ACC-B",
+        "buyer": "ACC-C",
+        "quantity": 3000,
+        "price": 12.55,
+        "timestamp": "2018-03-15T10:05:00"
+      },
+      {
+        "seller": "ACC-C",
+        "buyer": "ACC-D",
+        "quantity": 3000,
+        "price": 12.5,
+        "timestamp": "2018-03-15T10:10:00"
+      },
+      {
+        "seller": "ACC-D",
+        "buyer": "ACC-E",
+        "quantity": 3000,
+        "price": 12.55,
+        "timestamp": "2018-03-15T10:15:00"
+      },
+      {
+        "seller": "ACC-E",
+        "buyer": "ACC-A",
+        "quantity": 3000,
+        "price": 12.5,
+        "timestamp": "2018-03-15T10:20:00"
+      }
+    ],
+    "window_start": "2018-03-15T10:00:00",
+    "window_end": "2018-03-15T11:00:00"
+  },
+  "output": {
+    "fired": true,
+    "score": 0.5588333333333332,
+    "severity": "medium",
+    "cycle_accounts": [
+      "ACC-C",
+      "ACC-D",
+      "ACC-E",
+      "ACC-A",
+      "ACC-B"
+    ],
+    "cycle_length": 5,
+    "gross_volume": 15000,
+    "max_net_position_pct": 0.0,
+    "volume_multiple": 2.1666666666666665,
+    "counterparty_known": true,
+    "is_illiquid": true,
+    "explanation": "Circular trading ring detected: ACC-C \u2192 ACC-D \u2192 ACC-E \u2192 ACC-A \u2192 ACC-B \u2192 ACC-C. Ring has 5 accounts. Gross volume within ring: 15,000 shares (2.2x KAVITIND's 30-day avg daily volume). Maximum net position change across all ring accounts: 0.0% of gross volume (threshold: 10%) \u2014 all accounts effectively returned to their starting positions, consistent with no genuine economic purpose. Counterparty identity: directly confirmed from exchange order matching. WARNING: KAVITIND has low daily volume (45,000 shares/day, below the 50,000 illiquid threshold). In illiquid instruments, a small number of legitimate traders naturally trade with each other repeatedly. This signal has been score-discounted by 30% and requires manual analyst review before escalation.",
+    "false_positive_warning": "WARNING: KAVITIND has low daily volume (45,000 shares/day, below the 50,000 illiquid threshold). In illiquid instruments, a small number of legitimate traders naturally trade with each other repeatedly. This signal has been score-discounted by 30% and requires manual analyst review before escalation."
+  }
+}

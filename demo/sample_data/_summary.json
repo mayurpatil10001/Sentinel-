@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-09-05T18:13:02.806312Z",
+  "sample_data": true,
+  "results": {
+    "spoofing": {
+      "trigger_fired": true,
+      "trigger_score": 0.7084220800851584,
+      "trigger_severity": "high",
+      "normal_fired": false
+    },
+    "circular_trading": {
+      "trigger_fired": true,
+      "trigger_score": 0.5588333333333332,
+      "trigger_severity": "medium",
+      "normal_fired": false
+    },
+    "coordinated_pump": {
+      "trigger_fired": true,
+      "trigger_score": 0.5446,
+      "trigger_severity": "medium",
+      "normal_fired": false
+    },
+    "oi_manipulation": {
+      "trigger_fired": true,
+      "trigger_score": 0.18461538461538463,
+      "trigger_severity": "low",
+      "normal_fired": false
+    },
+    "basis_distortion": {
+      "trigger_fired": true,
+      "trigger_score": 0.24571804408963074,
+      "trigger_severity": "low",
+      "normal_fired": false
+    },
+    "option_pinning": {
+      "trigger_fired": true,
+      "trigger_score": 0.9914275217373556,
+      "trigger_severity": "critical",
+      "normal_fired": false
+    }
+  },
+  "errors": {}
+}
