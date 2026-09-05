@@ -44,8 +44,8 @@ from datetime import date, timedelta
 import pandas as pd
 import requests
 
-from data.ingest.errors import BhavcopyFetchError, BhavcopyParseError
-from data.ingest.resilience import bhavcopy_circuit, retry_with_backoff
+from data.ingest.errors import BhavcopyFetchError, BhavcopyParseError, IngestError
+from data.ingest.resilience import bhavcopy_circuit, delivery_circuit, retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -195,12 +195,17 @@ def _delivery_url(trading_date: date) -> str:
     max_delay=30.0,
     retryable_exceptions=(BhavcopyFetchError,),
 )
-def _fetch_raw(url: str) -> bytes:
+def _fetch_raw(url: str, circuit=None) -> bytes:
     """
     HTTP GET with timeout, error handling, retry, and circuit breaker.
 
     Uses the module-level session (with NSE homepage cookie) rather than
     bare requests.get. Raises BhavcopyFetchError on any failure.
+
+    circuit: which CircuitBreaker instance to use — defaults to
+    bhavcopy_circuit (the main data endpoint) if not given. The delivery
+    fetch passes delivery_circuit explicitly so a flaky supplementary
+    endpoint can never trip a breaker that blocks the critical main fetch.
 
     Non-retryable failures (403, 404) propagate immediately — they will not
     be retried by retry_with_backoff.
@@ -208,16 +213,17 @@ def _fetch_raw(url: str) -> bytes:
     Retryable failures (5xx, network timeouts) are retried up to 3 times
     with exponential backoff and full jitter.
     """
-    bhavcopy_circuit.before_request()  # raises CircuitBreakerOpenError if OPEN
+    circuit = circuit or bhavcopy_circuit
+    circuit.before_request()  # raises CircuitBreakerOpenError if OPEN
     try:
         resp = _shared_bhav_session.get(url)
     except requests.exceptions.RequestException as exc:
-        bhavcopy_circuit.on_failure()
+        circuit.on_failure()
         raise BhavcopyFetchError(url, None, str(exc)) from exc
 
     if resp.status_code != 200:
         if resp.status_code in (500, 502, 503, 504, 429):
-            bhavcopy_circuit.on_failure()
+            circuit.on_failure()
         # Non-retryable statuses (403, 404, etc.) are raised immediately
         raise BhavcopyFetchError(
             url, resp.status_code,
@@ -225,7 +231,7 @@ def _fetch_raw(url: str) -> bytes:
             f"For 403: IP reputation block — see docs/NSE_ACCESS_LIMITATIONS.md. "
             f"For 404: non-trading day or archive not yet available."
         )
-    bhavcopy_circuit.on_success()
+    circuit.on_success()
     return resp.content
 
 
@@ -401,13 +407,22 @@ def fetch_bhavcopy(
         del_url = _delivery_url(trading_date)
         logger.info("Fetching delivery data from %s", del_url)
         try:
-            del_raw = _fetch_raw(del_url)
+            del_raw = _fetch_raw(del_url, circuit=delivery_circuit)
             del_df = _parse_delivery_dat(del_raw, trading_date)
             if not del_df.empty:
                 df = df.merge(del_df[["symbol", "delivery_qty", "delivery_pct"]],
                               on="symbol", how="left")
-        except BhavcopyFetchError as exc:
-            # Delivery file is supplementary — log but don't abort
+        except IngestError as exc:
+            # Delivery file is supplementary — log but don't abort.
+            # Catches the full IngestError hierarchy (BhavcopyFetchError,
+            # MaxRetriesExceededError, CircuitBreakerOpenError), not just
+            # the narrowest case, so a retry-exhausted or circuit-open
+            # failure on this non-critical endpoint can never discard the
+            # already-successfully-fetched main bhavcopy data in `df`.
+            # (Bug found during Phase 8 backtest: the previous narrow
+            # `except BhavcopyFetchError` let MaxRetriesExceededError and
+            # CircuitBreakerOpenError propagate uncaught, silently
+            # discarding hundreds of valid trading days' price/volume data.)
             logger.warning(
                 "Delivery file fetch failed (%s). "
                 "Continuing without delivery data. Error: %s",

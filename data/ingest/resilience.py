@@ -372,6 +372,20 @@ bhavcopy_circuit = CircuitBreaker(
     cooldown_seconds=300,   # HEURISTIC: 5-minute cooldown for archive server issues
 )
 
+# Deliberately SEPARATE from bhavcopy_circuit. The delivery-position .dat file is
+# supplementary and known to be unreliable (frequent 404s/timeouts even on valid
+# trading days — see docs/NSE_ACCESS_LIMITATIONS.md). If it shared a circuit
+# breaker with the critical main bhavcopy fetch, instability in this non-critical
+# endpoint could trip a breaker that then blocks the critical one too.
+# Confirmed this actually happened during the Phase 8 backtest: delivery-fetch
+# failures opened the shared circuit, which then rejected legitimate main-bhavcopy
+# requests for hundreds of subsequent days that had perfectly good data.
+delivery_circuit = CircuitBreaker(
+    source_name="bhavcopy_delivery",
+    failure_threshold=5,
+    cooldown_seconds=300,
+)
+
 bulk_deals_circuit = CircuitBreaker(
     source_name="bulk_deals",
     failure_threshold=5,
