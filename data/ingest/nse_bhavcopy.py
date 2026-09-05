@@ -277,6 +277,15 @@ def _parse_bhavcopy_csv(raw_zip: bytes, trading_date: date) -> pd.DataFrame:
     df["date"] = trading_date
     df["exchange"] = "NSE"
 
+    # Strip whitespace from string columns.
+    # NSE bhavcopy CSV pads SYMBOL (and ISIN) with trailing spaces — a quirk
+    # of their fixed-width-origin CSV format. The SERIES column is already
+    # stripped inline below for the EQ filter, but SYMBOL was missed, causing
+    # exact-match lookups (e.g. df["symbol"].str.upper() == "MAURIUDYOG") to
+    # silently fail on every row even when the symbol is genuinely present.
+    df["symbol"] = df["symbol"].str.strip()
+    df["isin"]   = df["isin"].str.strip()
+
     # Keep only EQ (equity) series unless caller requests all series
     # (BE, BZ etc. are special categories; mixing them skews volume baselines)
     df = df[df["series"].str.strip() == "EQ"].copy()
