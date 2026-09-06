@@ -1,0 +1,146 @@
+{
+  "generated_at": "2026-09-06T10:22:45.613706Z",
+  "sample_data": true,
+  "integrity_note": "Every condition listed here has a corresponding real-detector-output JSON file in demo/sample_data/watchlist_{asset}_{condition}.json. The UI is built from this index \u2014 it cannot display a condition without a real file.",
+  "assets": [
+    {
+      "id": "RELIANCE",
+      "display_name": "RELIANCE",
+      "exchange": "NSE",
+      "type": "equity_large_cap",
+      "type_label": "Large-cap equity",
+      "description": "High-liquidity baseline. avg 5.2M shares/day. Used in the real negative-control backtest.",
+      "applicable_detectors": [
+        "spoofing"
+      ],
+      "conditions": [
+        {
+          "id": "normal",
+          "label": "Normal trading",
+          "description": "Standard institutional buy/sell flow. No elevated cancellation ratio.",
+          "file": "watchlist_RELIANCE_normal.json"
+        },
+        {
+          "id": "spoofing",
+          "label": "Spoofing / layering",
+          "description": "Account places 4 large BUY orders (all cancelled) then executes a SELL at the inflated price.",
+          "file": "watchlist_RELIANCE_spoofing.json"
+        }
+      ]
+    },
+    {
+      "id": "KAVITIND",
+      "display_name": "KAVITIND",
+      "exchange": "NSE",
+      "type": "penny_stock",
+      "type_label": "Illiquid penny stock",
+      "description": "Illiquid penny stock. avg 45,000 shares/day. High false-positive risk \u2014 score discounted 30% by illiquidity guard.",
+      "applicable_detectors": [
+        "spoofing",
+        "circular_trading"
+      ],
+      "conditions": [
+        {
+          "id": "normal",
+          "label": "Normal trading",
+          "description": "Small executed orders + independent trades. Both detectors run and find nothing.",
+          "file": "watchlist_KAVITIND_normal.json"
+        },
+        {
+          "id": "spoofing",
+          "label": "Spoofing / layering",
+          "description": "Account places 4 large BUY orders (all cancelled \u00d75.5 normal size) then executes a SELL.",
+          "file": "watchlist_KAVITIND_spoofing.json"
+        },
+        {
+          "id": "circular",
+          "label": "Circular trading ring",
+          "description": "4-account ring: KR-A \u2192 KR-B \u2192 KR-C \u2192 KR-D \u2192 KR-A. Each leg 3,000 shares. Net position: 0.",
+          "file": "watchlist_KAVITIND_circular.json"
+        }
+      ]
+    },
+    {
+      "id": "TINYLTD",
+      "display_name": "TINYLTD",
+      "exchange": "NSE",
+      "type": "penny_stock",
+      "type_label": "Mid-cap penny stock",
+      "description": "Mid-cap penny stock. avg 30,000 shares/day. Coordinated pump target.",
+      "applicable_detectors": [
+        "coordinated_pump"
+      ],
+      "conditions": [
+        {
+          "id": "normal",
+          "label": "Normal trading",
+          "description": "3 regularly active accounts, staggered small buy orders. Volume < 5\u00d7 threshold.",
+          "file": "watchlist_TINYLTD_normal.json"
+        },
+        {
+          "id": "pump",
+          "label": "Coordinated pump",
+          "description": "7 dormant accounts (60+ days inactive, all new) buying 2,000 shares each \u2014 6.1\u00d7 normal volume.",
+          "file": "watchlist_TINYLTD_pump.json"
+        }
+      ]
+    },
+    {
+      "id": "NIFTYFUT",
+      "display_name": "NIFTY Futures",
+      "exchange": "NSE",
+      "type": "futures",
+      "type_label": "Index futures",
+      "description": "NIFTY 50 near-month futures. Basis distortion detector. Expiry: 28 DTE.",
+      "applicable_detectors": [
+        "basis_distortion"
+      ],
+      "conditions": [
+        {
+          "id": "normal",
+          "label": "Normal basis",
+          "description": "Futures trading at theoretical fair-value basis (cost-of-carry model, 6.5% RFR).",
+          "file": "watchlist_NIFTYFUT_normal.json"
+        },
+        {
+          "id": "basis",
+          "label": "Basis distortion",
+          "description": "Futures at \u20b9245 premium to spot vs fair-value basis of \u20b9122 \u2014 excess contango (0.50% deviation).",
+          "file": "watchlist_NIFTYFUT_basis.json"
+        }
+      ]
+    },
+    {
+      "id": "NIFTYOPT",
+      "display_name": "NIFTY Options",
+      "exchange": "NSE",
+      "type": "options_chain",
+      "type_label": "Index options",
+      "description": "NIFTY 50 options chain. OI manipulation + option pinning detectors.",
+      "applicable_detectors": [
+        "oi_manipulation",
+        "option_pinning"
+      ],
+      "conditions": [
+        {
+          "id": "normal",
+          "label": "Normal OI distribution",
+          "description": "Balanced OI across strikes. No strike >25% of chain. 28 DTE \u2014 outside pinning window.",
+          "file": "watchlist_NIFTYOPT_normal.json"
+        },
+        {
+          "id": "oi_concentration",
+          "label": "OI concentration",
+          "description": "24,000 PE holds 42% of total PE OI (504K/1.2M contracts) \u2014 far above 35% threshold.",
+          "file": "watchlist_NIFTYOPT_oi_concentration.json"
+        },
+        {
+          "id": "pinning",
+          "label": "Option pinning",
+          "description": "Expiry day: spot \u20b924,497 within 0.012% of 24,500 strike. Strike OI 4.5\u00d7 adjacent average.",
+          "file": "watchlist_NIFTYOPT_pinning.json"
+        }
+      ]
+    }
+  ]
+}

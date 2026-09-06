@@ -1,0 +1,198 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "KAVITIND",
+    "condition": "spoofing",
+    "detector": "spoofing",
+    "import_path": "from app.detection.spoofing import detect_spoofing_for_account",
+    "call_signature": "detect_spoofing_for_account(orders, instrument, window_start, window_end)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "KAVITIND",
+      "exchange": "NSE",
+      "type": "penny_stock",
+      "avg_daily_volume_30d": 45000,
+      "description": "Illiquid penny stock \u2014 avg 45,000 shares/day."
+    },
+    "window": {
+      "start": "2018-03-15T10:00:00",
+      "end": "2018-03-15T11:00:00",
+      "description": "60-minute surveillance window: 10:00\u201311:00"
+    },
+    "data": {
+      "type": "orders",
+      "count": 9,
+      "description": "4 large BUY orders (\u00d75.5 normal size), all cancelled. SELL executed at price peak.",
+      "records": [
+        {
+          "time": "10:00:00",
+          "order_id": "KS-1",
+          "side": "BUY",
+          "quantity": 2200,
+          "price": 12.5,
+          "status": "PLACED"
+        },
+        {
+          "time": "10:01:00",
+          "order_id": "KS-2",
+          "side": "BUY",
+          "quantity": 2200,
+          "price": 12.5,
+          "status": "PLACED"
+        },
+        {
+          "time": "10:02:00",
+          "order_id": "KS-3",
+          "side": "BUY",
+          "quantity": 2200,
+          "price": 12.6,
+          "status": "PLACED"
+        },
+        {
+          "time": "10:03:00",
+          "order_id": "KS-4",
+          "side": "BUY",
+          "quantity": 2200,
+          "price": 12.55,
+          "status": "PLACED"
+        },
+        {
+          "time": "10:05:00",
+          "order_id": "KS-1",
+          "side": "BUY",
+          "quantity": 2200,
+          "price": 12.5,
+          "status": "CANCELLED"
+        },
+        {
+          "time": "10:05:10",
+          "order_id": "KS-2",
+          "side": "BUY",
+          "quantity": 2200,
+          "price": 12.5,
+          "status": "CANCELLED"
+        },
+        {
+          "time": "10:05:20",
+          "order_id": "KS-3",
+          "side": "BUY",
+          "quantity": 2200,
+          "price": 12.6,
+          "status": "CANCELLED"
+        },
+        {
+          "time": "10:05:30",
+          "order_id": "KS-4",
+          "side": "BUY",
+          "quantity": 2200,
+          "price": 12.55,
+          "status": "CANCELLED"
+        },
+        {
+          "time": "10:06:00",
+          "order_id": "KS-5",
+          "side": "SELL",
+          "quantity": 450,
+          "price": 12.68,
+          "status": "EXECUTED"
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "spoofing"
+    ],
+    "fired": true,
+    "detector": "spoofing",
+    "score": 0.7229715226309076,
+    "severity": "high",
+    "summary": "KAVITIND \u2014 spoofing/layering, cancel ratio 95%, severity: high",
+    "explanation": "Account ACC-KAV-2 placed orders totaling 116,036 in value for KAVITIND (NSE), then cancelled 95.1% of that value. Peak order size was 5.5x the instrument's 30-day average order size. Price moved 1.44% while the order(s) were resting. The account also executed trades on the opposite side of the cancelled orders, consistent with profiting from the price move it caused.",
+    "evidence_table": {
+      "columns": [
+        "Time",
+        "Order ID",
+        "Side",
+        "Quantity",
+        "Price",
+        "Status"
+      ],
+      "rows": [
+        [
+          "10:00:00",
+          "KS-1",
+          "BUY",
+          "2200",
+          "\u20b912.50",
+          "PLACED"
+        ],
+        [
+          "10:01:00",
+          "KS-2",
+          "BUY",
+          "2200",
+          "\u20b912.50",
+          "PLACED"
+        ],
+        [
+          "10:02:00",
+          "KS-3",
+          "BUY",
+          "2200",
+          "\u20b912.60",
+          "PLACED"
+        ],
+        [
+          "10:03:00",
+          "KS-4",
+          "BUY",
+          "2200",
+          "\u20b912.55",
+          "PLACED"
+        ],
+        [
+          "10:05:00",
+          "KS-1",
+          "BUY",
+          "2200",
+          "\u20b912.50",
+          "CANCELLED"
+        ],
+        [
+          "10:05:10",
+          "KS-2",
+          "BUY",
+          "2200",
+          "\u20b912.50",
+          "CANCELLED"
+        ],
+        [
+          "10:05:20",
+          "KS-3",
+          "BUY",
+          "2200",
+          "\u20b912.60",
+          "CANCELLED"
+        ],
+        [
+          "10:05:30",
+          "KS-4",
+          "BUY",
+          "2200",
+          "\u20b912.55",
+          "CANCELLED"
+        ],
+        [
+          "10:06:00",
+          "KS-5",
+          "SELL",
+          "450",
+          "\u20b912.68",
+          "EXECUTED"
+        ]
+      ]
+    }
+  }
+}

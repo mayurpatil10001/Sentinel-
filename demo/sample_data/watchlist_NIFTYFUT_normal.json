@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "NIFTYFUT",
+    "condition": "normal",
+    "detector": "basis_distortion",
+    "import_path": "from app.detection.basis_distortion import detect_basis_distortion",
+    "call_signature": "detect_basis_distortion(symbol, exchange, spot_price, futures_price, expiry_date, snapshot_time)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "NIFTY",
+      "exchange": "NSE",
+      "type": "futures",
+      "avg_daily_volume_30d": null,
+      "description": "Near-month NIFTY 50 futures contract. Expiry: 2024-12-26"
+    },
+    "snapshot_time": "2024-11-28T14:30:00",
+    "data": {
+      "type": "price_snapshot",
+      "description": "Spot and futures price snapshot \u2014 futures near theoretical fair value",
+      "records": [
+        {
+          "field": "Spot price",
+          "value": "\u20b924,500.00"
+        },
+        {
+          "field": "Futures price",
+          "value": "\u20b924,622.16"
+        },
+        {
+          "field": "Fair-value basis",
+          "value": "\u20b9122.16"
+        },
+        {
+          "field": "Actual basis",
+          "value": "\u20b9122.16"
+        },
+        {
+          "field": "Days to expiry",
+          "value": "28"
+        },
+        {
+          "field": "Risk-free rate",
+          "value": "6.5%"
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "basis_distortion"
+    ],
+    "fired": false,
+    "results_by_detector": {
+      "basis_distortion": {
+        "fired": false,
+        "reason": "actual basis \u2248 fair-value basis \u2014 deviation well below 0.5% threshold"
+      }
+    },
+    "summary": "No anomalies detected in this window"
+  }
+}

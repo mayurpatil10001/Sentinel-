@@ -1,0 +1,166 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "TINYLTD",
+    "condition": "pump",
+    "detector": "coordinated_pump",
+    "import_path": "from app.detection.coordinated_pump import detect_coordinated_pump",
+    "call_signature": "detect_coordinated_pump(buy_orders, instrument, window_start, window_end, prior_trade_dates, first_seen_dates)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "TINYLTD",
+      "exchange": "NSE",
+      "type": "penny_stock",
+      "avg_daily_volume_30d": 30000,
+      "description": "Mid-cap penny stock \u2014 avg 30,000 shares/day."
+    },
+    "window": {
+      "start": "2019-06-10T10:30:00",
+      "end": "2019-06-10T11:00:00",
+      "description": "30-minute surveillance window: 10:30\u201311:00"
+    },
+    "data": {
+      "type": "orders",
+      "count": 7,
+      "description": "7 accounts (all dormant >60 days, all newly registered <7 days), buying 2000 shares each at escalating prices",
+      "records": [
+        {
+          "time": "10:30:00",
+          "account": "PUMP-01",
+          "quantity": 2000,
+          "price": 3.2,
+          "dormant_days": 60,
+          "account_age_days": 3
+        },
+        {
+          "time": "10:33:00",
+          "account": "PUMP-02",
+          "quantity": 2000,
+          "price": 3.21,
+          "dormant_days": 60,
+          "account_age_days": 3
+        },
+        {
+          "time": "10:36:00",
+          "account": "PUMP-03",
+          "quantity": 2000,
+          "price": 3.22,
+          "dormant_days": 60,
+          "account_age_days": 3
+        },
+        {
+          "time": "10:39:00",
+          "account": "PUMP-04",
+          "quantity": 2000,
+          "price": 3.23,
+          "dormant_days": 60,
+          "account_age_days": 3
+        },
+        {
+          "time": "10:42:00",
+          "account": "PUMP-05",
+          "quantity": 2000,
+          "price": 3.24,
+          "dormant_days": 60,
+          "account_age_days": 3
+        },
+        {
+          "time": "10:45:00",
+          "account": "PUMP-06",
+          "quantity": 2000,
+          "price": 3.25,
+          "dormant_days": 60,
+          "account_age_days": 3
+        },
+        {
+          "time": "10:48:00",
+          "account": "PUMP-07",
+          "quantity": 2000,
+          "price": 3.2600000000000002,
+          "dormant_days": 60,
+          "account_age_days": 3
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "coordinated_pump"
+    ],
+    "fired": true,
+    "detector": "coordinated_pump",
+    "score": 0.5446,
+    "severity": "medium",
+    "summary": "TINYLTD \u2014 coordinated pump, 7 accounts, 6.1\u00d7 volume, severity: medium",
+    "explanation": "Coordinated buy-side pump detected for TINYLTD (NSE) in window 10:30\u201311:00. 7 distinct accounts placed buy orders with combined volume of 14,000 shares (6.1x the instrument's normal volume for this window). Threshold: >= 3 accounts and >= 5x normal volume. 7 of 7 accounts were dormant in this instrument for >= 30 days before this window (PUMP-04, PUMP-07, PUMP-03...) \u2014 sudden reactivation of dormant accounts raises suspicion of coordinated entry. 7 accounts are newly active (first seen within 7 days). WARNING: TINYLTD is illiquid (30,000 shares/day avg). Any unusual buy interest can trip volume thresholds in illiquid names without implying manipulation. Score discounted 30%. Requires analyst review.",
+    "evidence_table": {
+      "columns": [
+        "Time",
+        "Account",
+        "Quantity",
+        "Price (\u20b9)",
+        "Dormant Days",
+        "Account Age (days)"
+      ],
+      "rows": [
+        [
+          "10:30:00",
+          "PUMP-01",
+          "2000",
+          "\u20b93.20",
+          "60",
+          "3"
+        ],
+        [
+          "10:33:00",
+          "PUMP-02",
+          "2000",
+          "\u20b93.21",
+          "60",
+          "3"
+        ],
+        [
+          "10:36:00",
+          "PUMP-03",
+          "2000",
+          "\u20b93.22",
+          "60",
+          "3"
+        ],
+        [
+          "10:39:00",
+          "PUMP-04",
+          "2000",
+          "\u20b93.23",
+          "60",
+          "3"
+        ],
+        [
+          "10:42:00",
+          "PUMP-05",
+          "2000",
+          "\u20b93.24",
+          "60",
+          "3"
+        ],
+        [
+          "10:45:00",
+          "PUMP-06",
+          "2000",
+          "\u20b93.25",
+          "60",
+          "3"
+        ],
+        [
+          "10:48:00",
+          "PUMP-07",
+          "2000",
+          "\u20b93.26",
+          "60",
+          "3"
+        ]
+      ]
+    }
+  }
+}

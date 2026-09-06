@@ -1,0 +1,104 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "NIFTYOPT",
+    "condition": "normal",
+    "detector": "oi_manipulation+option_pinning",
+    "import_path": "from app.detection.oi_manipulation import detect_oi_concentration; from app.detection.option_pinning import detect_option_pinning",
+    "call_signature": "detect_oi_concentration(chain_df, ...); detect_option_pinning(chain_df, ...)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "NIFTY",
+      "exchange": "NSE",
+      "type": "options_chain",
+      "avg_daily_volume_30d": null,
+      "description": "NIFTY 50 options chain. Expiry: 2024-12-26. Spot: \u20b924,500"
+    },
+    "snapshot_time": "2024-11-28T12:00:00",
+    "data": {
+      "type": "option_chain",
+      "description": "Balanced OI distribution \u2014 no strike holds >25% of chain. 28 DTE \u2014 outside pinning window.",
+      "records": [
+        {
+          "strike": 24200,
+          "option_type": "PE",
+          "oi": 300000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24400,
+          "option_type": "PE",
+          "oi": 280000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24600,
+          "option_type": "PE",
+          "oi": 265000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24800,
+          "option_type": "PE",
+          "oi": 245000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 25000,
+          "option_type": "PE",
+          "oi": 210000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24200,
+          "option_type": "CE",
+          "oi": 295000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24400,
+          "option_type": "CE",
+          "oi": 310000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24600,
+          "option_type": "CE",
+          "oi": 270000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24800,
+          "option_type": "CE",
+          "oi": 230000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 25000,
+          "option_type": "CE",
+          "oi": 200000,
+          "expiry": "2024-12-26"
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "oi_manipulation",
+      "option_pinning"
+    ],
+    "fired": false,
+    "results_by_detector": {
+      "oi_manipulation": {
+        "fired": false,
+        "reason": "max single-strike share \u224822% \u2014 below 35% threshold"
+      },
+      "option_pinning": {
+        "fired": false,
+        "reason": "28 days to expiry \u2014 beyond PIN_EXPIRY_DAYS_THRESHOLD=2, returns None immediately"
+      }
+    },
+    "summary": "No anomalies detected in this window"
+  }
+}
