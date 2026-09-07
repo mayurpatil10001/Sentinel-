@@ -265,6 +265,10 @@ class CircuitBreaker:
         self._state: _CircuitState = _CircuitState.CLOSED
         self._consecutive_failures: int = 0
         self._opened_at: float | None = None
+        # Unix timestamp of the last successful fetch for this source.
+        # Set in on_success(). Read by GET /api/system/data-sources.
+        # None means no successful fetch since process start.
+        self.last_success_ts: float | None = None
 
     @property
     def state(self) -> str:
@@ -323,6 +327,7 @@ class CircuitBreaker:
         self._state = _CircuitState.CLOSED
         self._consecutive_failures = 0
         self._opened_at = None
+        self.last_success_ts = time.time()  # real wall-clock timestamp of last success
 
     def on_failure(self) -> None:
         """
