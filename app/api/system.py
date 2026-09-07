@@ -29,7 +29,12 @@ from app.detection.spoofing import (
     MIN_SIZE_MULTIPLE,
     MIN_PRICE_IMPACT_PCT,
 )
-from app.detection.circular_trading import MAX_CYCLE_LENGTH, MIN_TRADES_IN_WINDOW
+from app.detection.circular_trading import (
+    MAX_CYCLE_LENGTH,
+    NET_POSITION_THRESHOLD,
+    MIN_VOLUME_MULTIPLE,
+    WINDOW_MINUTES as CT_WINDOW_MINUTES,
+)
 from app.detection.coordinated_pump import MIN_COORDINATING_ACCOUNTS, VOLUME_SPIKE_MULTIPLE
 from app.detection.oi_manipulation import (
     OI_CONCENTRATION_THRESHOLD,
@@ -178,9 +183,11 @@ def get_detector_status():
             "description": "Account-ring cycle detection via directed graph",
             "thresholds": {
                 "MAX_CYCLE_LENGTH": MAX_CYCLE_LENGTH,
-                "MIN_TRADES_IN_WINDOW": MIN_TRADES_IN_WINDOW,
+                "NET_POSITION_THRESHOLD": NET_POSITION_THRESHOLD,
+                "MIN_VOLUME_MULTIPLE": MIN_VOLUME_MULTIPLE,
+                "WINDOW_MINUTES": CT_WINDOW_MINUTES,
             },
-            "threshold_labels": "HEURISTIC",
+            "threshold_labels": "HEURISTIC / UNVALIDATED GUESS — NET_POSITION_THRESHOLD interprets SEBI 'not substantial' loosely",
             **vstatus("circular_trading"),
         },
         {

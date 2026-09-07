@@ -37,25 +37,21 @@ def run(cmd: list[str], cwd=None) -> dict:
 
 def parse_pytest_summary(stdout: str) -> dict:
     """
-    Parse pytest's last-line summary: '273 passed in 14.21s' etc.
-    Returns {passed, failed, errors, duration_s} or {parse_error}.
+    Parse pytest's summary line: '273 passed, 4 deselected in 170.36s' etc.
+    Returns {passed, failed, errors, duration_s}.
     """
     import re
-    # e.g.: "273 passed in 14.21s" or "270 passed, 3 failed in 8.44s"
-    m = re.search(
-        r'((\d+) passed)?[,\s]*((\d+) failed)?[,\s]*((\d+) error)?.*?in\s+([\d.]+)s',
-        stdout
-    )
-    if m:
-        return {
-            "passed": int(m.group(2) or 0),
-            "failed": int(m.group(4) or 0),
-            "errors": int(m.group(6) or 0),
-            "duration_s": float(m.group(7)),
-        }
-    # Fallback: just check for "passed"
-    passed = re.search(r'(\d+) passed', stdout)
-    return {"passed": int(passed.group(1)) if passed else None, "parse_error": True}
+    passed_m = re.search(r'(\d+)\s+passed', stdout)
+    failed_m = re.search(r'(\d+)\s+failed', stdout)
+    errors_m = re.search(r'(\d+)\s+error', stdout)
+    dur_m = re.search(r'in\s+([\d.]+)s', stdout)
+
+    return {
+        "passed": int(passed_m.group(1)) if passed_m else 0,
+        "failed": int(failed_m.group(1)) if failed_m else 0,
+        "errors": int(errors_m.group(1)) if errors_m else 0,
+        "duration_s": float(dur_m.group(1)) if dur_m else None,
+    }
 
 
 def main():
@@ -70,7 +66,8 @@ def main():
 
     # ── 1. pytest full suite ────────────────────────────────────────────────
     print("\n[1/3] Running pytest tests/ ...")
-    r = run([sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short", "-q"])
+    r = run([sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short", "-q",
+             "--ignore=tests/__pycache__"])
     summary = parse_pytest_summary(r["stdout"] + r["stderr"])
     health["runs"]["pytest"] = {
         "command": "python -m pytest tests/ -q",

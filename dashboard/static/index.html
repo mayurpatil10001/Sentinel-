@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel — Operational Dashboard</title>
+<meta name="description" content="Sentinel market surveillance operational console — live analyst dashboard for all 6 detection engines.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ─── Tokens ─────────────────────────────────────────────────────────────── */
+:root{
+  --bg:#060d15;--sf:#0b1520;--sf2:#0f1c2b;--sf3:#132233;
+  --b:#172438;--b2:#1e2f45;--b3:#253952;
+  --re:#22d3ee;--rd:#0e7490;--rb:rgba(34,211,238,.07);
+  --sy:#f59e0b;--sd:#92400e;--sb:rgba(245,158,11,.08);
+  --cr:#ef4444;--ch:#f97316;--cm:#eab308;--cl:#6b7280;
+  --t1:#e2e8f0;--t2:#94a3b8;--t3:#4a6180;--t4:#253952;
+  --fm:'Cascadia Code','Fira Code',Consolas,monospace;
+  --live-bg:#1a0a00;--live-b:#f97316;--live-text:#fcd34d;
+  --sb-bg:#001a33;--sb-b:#0ea5e9;--sb-text:#7dd3fc;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--t1);font-family:'Inter',system-ui,sans-serif;
+  font-size:13px;line-height:1.55;display:flex;flex-direction:column}
+
+/* ─── MODE BANNER (impossible to miss — 48px, full width) ─────────────────── */
+#mode-banner{
+  height:48px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;font-family:var(--fm);font-size:12px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;
+}
+#mode-banner.live{background:var(--live-bg);border-bottom:3px solid var(--live-b);color:var(--live-text)}
+#mode-banner.sandbox{background:var(--sb-bg);border-bottom:3px solid var(--sb-b);color:var(--sb-text)}
+.mode-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;animation:blink 1s step-end infinite}
+.live .mode-dot{background:var(--live-b)}
+.sandbox .mode-dot{background:var(--sb-b)}
+@keyframes blink{50%{opacity:.3}}
+#mode-time{font-size:10px;color:var(--t3);font-weight:400;letter-spacing:.06em}
+
+/* ─── Layout ──────────────────────────────────────────────────────────────── */
+#layout{flex:1;display:flex;overflow:hidden}
+
+/* Sidebar nav */
+#sidenav{width:180px;flex-shrink:0;background:var(--sf);border-right:1px solid var(--b);
+  display:flex;flex-direction:column;overflow-y:auto}
+.sn-logo{padding:14px 16px;font-family:var(--fm);font-size:11px;font-weight:700;
+  color:var(--re);letter-spacing:.06em;border-bottom:1px solid var(--b)}
+.sn-section{padding:8px 0;border-bottom:1px solid var(--b)}
+.sn-label{font-family:var(--fm);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--t4);padding:6px 16px 3px}
+.sn-link{display:flex;align-items:center;gap:8px;padding:7px 16px;
+  font-size:12px;color:var(--t3);cursor:pointer;transition:background .1s,color .1s;
+  text-decoration:none;border-left:2px solid transparent}
+.sn-link:hover{background:var(--sf2);color:var(--t1)}
+.sn-link.active{background:var(--sf3);color:var(--re);border-left-color:var(--re)}
+.sn-ico{font-size:13px;width:16px;text-align:center}
+.sn-sandbox-btn{margin:10px 12px;padding:7px 12px;background:var(--sb-bg);
+  border:1px solid var(--sb-b);color:var(--sb-text);font-family:var(--fm);
+  font-size:10px;font-weight:700;letter-spacing:.08em;cursor:pointer;text-align:center;
+  text-transform:uppercase;transition:opacity .15s}
+.sn-sandbox-btn:hover{opacity:.8}
+.sn-footer{margin-top:auto;padding:12px 16px;font-family:var(--fm);font-size:9px;color:var(--t4);
+  line-height:1.6;border-top:1px solid var(--b)}
+
+/* Main content area */
+#main-area{flex:1;overflow-y:auto;background:var(--bg)}
+
+/* Page panels */
+.page{display:none;padding:20px 24px;min-height:100%}
+.page.active{display:block}
+
+/* ─── Shared components ────────────────────────────────────────────────────── */
+.ph{font-family:var(--fm);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--t3);margin-bottom:6px}
+h2{font-size:18px;font-weight:600;margin-bottom:4px}
+h3{font-size:14px;font-weight:600;margin-bottom:8px;color:var(--t2)}
+.lede{font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.65}
+.error-box{background:rgba(239,68,68,.1);border:1px solid #7f1d1d;padding:10px 14px;
+  font-family:var(--fm);font-size:11px;color:#fca5a5;margin-bottom:12px}
+.loading{font-family:var(--fm);font-size:11px;color:var(--t3);padding:20px;text-align:center}
+.empty-state{font-family:var(--fm);font-size:12px;color:var(--t3);padding:30px;
+  text-align:center;border:1px dashed var(--b2);margin:8px 0}
+
+/* Cards grid */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1px;
+  background:var(--b);margin-bottom:16px}
+.card{background:var(--sf);padding:16px 18px}
+.card-val{font-family:var(--fm);font-size:26px;font-weight:700;color:var(--t1);line-height:1}
+.card-unit{font-family:var(--fm);font-size:11px;color:var(--t2)}
+.card-lbl{font-size:11px;color:var(--t3);margin-top:4px}
+.card-sub{font-size:10px;color:var(--t4);font-style:italic;margin-top:2px}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--b);background:var(--sf);margin-bottom:16px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-family:var(--fm);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--t3);padding:7px 12px;
+  border-bottom:1px solid var(--b2);white-space:nowrap;background:var(--sf2)}
+td{font-family:var(--fm);font-size:11px;padding:6px 12px;
+  border-bottom:1px solid rgba(255,255,255,.04);color:var(--t2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr.clickable{cursor:pointer;transition:background .1s}
+tr.clickable:hover td{background:var(--sf2)}
+.sym{color:var(--t1);font-weight:700}
+
+/* Severity badges */
+.sev{font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.06em;
+  padding:2px 7px;color:#000;text-transform:uppercase;display:inline-block}
+.sev-critical{background:#ef4444}.sev-high{background:#f97316}
+.sev-medium{background:#eab308}.sev-low{background:#6b7280;color:#fff}
+.sev-none{background:var(--b3);color:var(--t3)}
+
+/* Status dot */
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-ok{background:#22c55e;box-shadow:0 0 5px rgba(34,197,94,.5)}
+.dot-warn{background:#f97316;box-shadow:0 0 5px rgba(249,115,22,.5)}
+.dot-err{background:#ef4444;box-shadow:0 0 5px rgba(239,68,68,.5);animation:pulse .8s infinite alternate}
+.dot-gray{background:var(--b3)}
+@keyframes pulse{from{opacity:.5}to{opacity:1}}
+
+/* Filters toolbar */
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center}
+.filters select,.filters input{background:var(--sf2);border:1px solid var(--b2);
+  color:var(--t1);font-family:var(--fm);font-size:11px;padding:5px 9px;
+  outline:none;transition:border-color .15s}
+.filters select:focus,.filters input:focus{border-color:var(--rd)}
+.filters select option{background:var(--sf2)}
+.btn{font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;padding:6px 14px;border:1px solid var(--b2);
+  background:none;color:var(--t2);cursor:pointer;transition:all .12s}
+.btn:hover{background:var(--sf3);border-color:var(--b3);color:var(--t1)}
+.btn-primary{background:var(--re);border-color:var(--re);color:#000}
+.btn-primary:hover{background:#38bdf8}
+.btn-danger{background:rgba(239,68,68,.15);border-color:#7f1d1d;color:#fca5a5}
+.btn-danger:hover{background:rgba(239,68,68,.25)}
+
+/* Right detail drawer */
+#drawer{position:fixed;right:0;top:48px;bottom:0;width:520px;
+  background:var(--sf);border-left:1px solid var(--b);
+  transform:translateX(100%);transition:transform .2s;z-index:100;
+  display:flex;flex-direction:column;overflow:hidden}
+#drawer.open{transform:translateX(0)}
+.drawer-hdr{padding:14px 18px;border-bottom:1px solid var(--b);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.drawer-title{font-size:13px;font-weight:600;color:var(--t1)}
+.drawer-close{background:none;border:none;color:var(--t3);font-size:18px;
+  cursor:pointer;padding:4px;transition:color .1s}
+.drawer-close:hover{color:var(--t1)}
+.drawer-body{flex:1;overflow-y:auto;padding:16px 18px}
+
+/* Inline note */
+.note{font-size:11px;color:var(--t3);border-left:2px solid var(--b3);
+  padding:6px 12px;line-height:1.65;margin-bottom:12px}
+.note.warn{border-color:var(--sd);color:var(--sy)}
+.note.ok{border-color:var(--rd);color:var(--re)}
+
+/* Honesty badge */
+.hbdg{display:inline-flex;align-items:center;gap:5px;font-family:var(--fm);
+  font-size:10px;font-weight:700;letter-spacing:.06em;padding:3px 8px;
+  border:1px solid;margin-left:8px;vertical-align:middle}
+.hbdg-r{background:var(--rb);color:var(--re);border-color:var(--rd)}
+.hbdg-s{background:var(--sb);color:var(--sy);border-color:var(--sd)}
+
+/* Sandbox overlay */
+#sandbox-overlay{display:none;position:fixed;inset:0;z-index:200;
+  background:var(--sb-bg);flex-direction:column;overflow-y:auto}
+#sandbox-overlay.open{display:flex}
+.sb-banner{background:var(--sb-bg);border-bottom:4px solid var(--sb-b);
+  padding:12px 24px;font-family:var(--fm);font-size:13px;font-weight:700;
+  color:var(--sb-text);letter-spacing:.08em;display:flex;align-items:center;
+  justify-content:space-between;flex-shrink:0}
+.sb-body{flex:1;padding:24px;overflow-y:auto}
+
+/* Pagination */
+.pager{display:flex;align-items:center;gap:8px;padding:10px 0;font-family:var(--fm);font-size:11px;color:var(--t3)}
+.pager button{background:var(--sf2);border:1px solid var(--b2);color:var(--t2);
+  font-family:var(--fm);font-size:10px;padding:4px 10px;cursor:pointer}
+.pager button:disabled{opacity:.35;cursor:not-allowed}
+</style>
+</head>
+<body>
+
+<!-- ═══ MODE BANNER ═══════════════════════════════════════════════════════ -->
+<div id="mode-banner" class="live">
+  <span><span class="mode-dot"></span>&#9632; LIVE — OPERATIONAL DATA — Real backend · Real DB · All data from GET /api/*</span>
+  <span id="mode-time"></span>
+</div>
+
+<!-- ═══ LAYOUT ════════════════════════════════════════════════════════════ -->
+<div id="layout">
+
+  <!-- Sidebar -->
+  <nav id="sidenav">
+    <div class="sn-logo">SENTINEL</div>
+    <div class="sn-section">
+      <div class="sn-label">Surveillance</div>
+      <div class="sn-link active" onclick="nav('cmd')"><span class="sn-ico">⬛</span>Command Center</div>
+      <div class="sn-link" onclick="nav('watchlist')"><span class="sn-ico">◉</span>Watchlist</div>
+      <div class="sn-link" onclick="nav('alerts')"><span class="sn-ico">▲</span>Alerts</div>
+      <div class="sn-link" onclick="nav('audit')"><span class="sn-ico">&#128274;</span>Audit & Security</div>
+    </div>
+    <div class="sn-section">
+      <div class="sn-label">System</div>
+      <div class="sn-link" onclick="nav('datasources')"><span class="sn-ico">◈</span>Data Sources</div>
+      <div class="sn-link" onclick="nav('backtest')"><span class="sn-ico">⊞</span>Backtest</div>
+      <div class="sn-link" onclick="nav('engineering')"><span class="sn-ico">⚙</span>Engineering</div>
+    </div>
+    <button class="sn-sandbox-btn" onclick="openSandbox()">🔵 Open Sandbox<br><span style="font-weight:400;font-size:9px">Training / Sample Data</span></button>
+    <div class="sn-footer">
+      API: <span id="api-status" style="color:var(--cr)">connecting…</span><br>
+      v0.2.0 · September 2026
+    </div>
+  </nav>
+
+  <!-- Main pages -->
+  <div id="main-area">
+
+    <!-- ── 1. COMMAND CENTER ────────────────────────────────────────────── -->
+    <div id="page-cmd" class="page active">
+      <div class="ph">Surveillance overview</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h2>Command Center</h2>
+        <span class="hbdg hbdg-r">Live · Real DB</span>
+      </div>
+      <div class="lede" id="cmd-lede">Loading summary from real backend…</div>
+      <div id="cmd-error"></div>
+
+      <!-- Summary tiles -->
+      <div class="ph">Open alerts by severity</div>
+      <div class="cards" id="cmd-sev-cards">
+        <div class="card"><div class="loading">…</div></div>
+      </div>
+
+      <!-- Source health -->
+      <div class="ph">Data source health</div>
+      <div class="cards" id="cmd-source-cards">
+        <div class="card"><div class="loading">…</div></div>
+      </div>
+
+      <!-- Recent alerts feed -->
+      <div class="ph" style="margin-top:4px">Recent alerts — last 20</div>
+      <div class="note">Every row is a real Alert DB record. Click to open detail.</div>
+      <div class="tbl-wrap" id="cmd-alert-tbl">
+        <div class="loading">Loading…</div>
+      </div>
+    </div>
+
+    <!-- ── 2. WATCHLIST ─────────────────────────────────────────────────── -->
+    <div id="page-watchlist" class="page">
+      <div class="ph">Instruments</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h2>Watchlist</h2>
+        <span class="hbdg hbdg-r">GET /api/instruments</span>
+      </div>
+      <div class="lede">All instruments in the DB. last_alert_severity is computed from real open alerts in the last 24 h.</div>
+      <div class="filters">
+        <select id="wl-exchange" onchange="loadWatchlist()">
+          <option value="">All exchanges</option>
+          <option value="NSE">NSE</option>
+          <option value="BSE">BSE</option>
+        </select>
+        <select id="wl-type" onchange="loadWatchlist()">
+          <option value="">All types</option>
+          <option value="equity">Equity</option>
+          <option value="penny_stock">Penny stock</option>
+          <option value="future">Future</option>
+          <option value="option">Option</option>
+        </select>
+        <button class="btn" onclick="loadWatchlist()">Refresh</button>
+      </div>
+      <div class="tbl-wrap" id="wl-tbl"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- ── 3. ALERTS ────────────────────────────────────────────────────── -->
+    <div id="page-alerts" class="page">
+      <div class="ph">Alerts</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h2>Alert Console</h2>
+        <span class="hbdg hbdg-r">GET /api/alerts</span>
+      </div>
+      <div class="lede">Every row is a real Alert DB record. Click to open detail, view evidence log, transition status, or generate SEBI SAR.</div>
+      <div class="filters">
+        <select id="al-sev" onchange="loadAlerts()"><option value="">All severities</option>
+          <option>critical</option><option>high</option><option>medium</option><option>low</option></select>
+        <select id="al-status" onchange="loadAlerts()"><option value="">All statuses</option>
+          <option>open</option><option>investigating</option><option>escalated</option><option>closed</option></select>
+        <select id="al-pattern" onchange="loadAlerts()"><option value="">All patterns</option>
+          <option value="spoofing_layering">spoofing</option>
+          <option value="circular_trading">circular</option>
+          <option value="coordinated_pump">pump</option>
+          <option value="oi_concentration">OI</option>
+          <option value="basis_distortion">basis</option>
+          <option value="option_pinning">pinning</option>
+        </select>
+        <button class="btn" onclick="loadAlerts()">Refresh</button>
+        <span id="al-count" style="font-family:var(--fm);font-size:11px;color:var(--t3)"></span>
+      </div>
+      <div class="tbl-wrap" id="al-tbl"><div class="loading">Loading…</div></div>
+      <div class="pager" id="al-pager"></div>
+    </div>
+
+    <!-- ── 4. AUDIT ─────────────────────────────────────────────────────── -->
+    <div id="page-audit" class="page">
+      <div class="ph">Security & audit</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h2>Audit & Evidence Access Log</h2>
+        <span class="hbdg hbdg-r">GET /api/audit/evidence-access</span>
+      </div>
+      <div class="lede">Every row is written automatically by <code>build_evidence_log()</code> — one row per pull of alert evidence. Logs who pulled what, when, and whether raw account IDs were returned.</div>
+      <div class="note warn">Raw ID access (used_raw_ids=true) indicates an analyst explicitly requested unhashed account IDs. This is expected for SEBI/exchange verification workflows but should be reviewed.</div>
+      <div class="filters">
+        <input id="audit-alert-id" placeholder="Filter by alert ID" style="width:280px" oninput="loadAudit()">
+        <button class="btn" onclick="loadAudit()">Refresh</button>
+        <span id="audit-count" style="font-family:var(--fm);font-size:11px;color:var(--t3)"></span>
+      </div>
+      <div class="tbl-wrap" id="audit-tbl"><div class="loading">Loading…</div></div>
+      <div class="pager" id="audit-pager"></div>
+
+      <div style="margin-top:20px">
+        <h3>Retention Policy (current configuration)</h3>
+        <div class="note">Retention: 2555 days (~7 years) for Order/Trade rows not referenced by open/investigating/escalated alerts. Orders tied to active investigations are never purged regardless of age. Source: <code>app/security/retention.py</code>.</div>
+      </div>
+    </div>
+
+    <!-- ── 5. DATA SOURCES ──────────────────────────────────────────────── -->
+    <div id="page-datasources" class="page">
+      <div class="ph">System health</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h2>Data Sources & Detector Status</h2>
+        <span class="hbdg hbdg-r">GET /api/system/data-sources · /detector-status</span>
+      </div>
+      <div class="lede">Circuit breaker state is read from live in-process singleton objects — not static. Detector thresholds are imported directly from each detector module.</div>
+      <div id="ds-error"></div>
+
+      <h3>Ingest Sources</h3>
+      <div class="tbl-wrap" id="ds-source-tbl"><div class="loading">Loading…</div></div>
+
+      <h3 style="margin-top:16px">Detector Validation Status</h3>
+      <div class="note warn" id="ds-honest-note">Loading…</div>
+      <div class="tbl-wrap" id="ds-det-tbl"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- ── 6. BACKTEST ──────────────────────────────────────────────────── -->
+    <div id="page-backtest" class="page">
+      <div class="ph">Validation results</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h2>Backtest & Validation</h2>
+        <span class="hbdg hbdg-r">GET /api/backtest/results</span>
+      </div>
+      <div class="lede">Real content from <code>backtest/results/*.json</code> and <code>backtest/REPORT.md</code>. Honest granularity preserved — no single-score summarization.</div>
+      <div id="bt-summary-cards" class="cards"></div>
+      <div id="bt-error"></div>
+      <div id="bt-cases"></div>
+    </div>
+
+    <!-- ── 7. ENGINEERING ───────────────────────────────────────────────── -->
+    <div id="page-engineering" class="page">
+      <div class="ph">Engineering health</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h2>Engineering Health</h2>
+        <span class="hbdg hbdg-r">GET /api/system/engineering-health</span>
+      </div>
+      <div class="lede">Real test suite and stress test numbers, persisted by <code>dashboard/scripts/run_and_save_health.py</code>. If no run has been recorded, the page says so explicitly — no fabricated numbers.</div>
+      <div id="eng-content"><div class="loading">Loading…</div></div>
+    </div>
+
+  </div><!-- #main-area -->
+</div><!-- #layout -->
+
+<!-- ═══ ALERT DETAIL DRAWER ═══════════════════════════════════════════════ -->
+<div id="drawer">
+  <div class="drawer-hdr">
+    <span class="drawer-title" id="drawer-title">Alert Detail</span>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</div>
+
+<!-- ═══ SANDBOX OVERLAY (completely separate — zero shared state with live pages) ═══ -->
+<!--
+  SANDBOX ISOLATION GUARANTEE:
+  - Sandbox data is loaded from ../../demo/sample_data/watchlist_*.json (relative file paths)
+  - Live pages fetch from http://127.0.0.1:8000/api/* (HTTP API calls)
+  - There is NO shared state variable, NO shared cache, NO shared rendering function
+    between sandbox and live sections. The sandbox overlay is a self-contained JS scope.
+  - The sandbox overlay can only be shown by openSandbox() and hidden by closeSandbox().
+    Neither function touches any live-page data or DOM nodes.
+-->
+<div id="sandbox-overlay">
+  <div class="sb-banner">
+    <span>🔵 SANDBOX — TRAINING &amp; EXPLORATION — Pre-computed sample data — NOT operational</span>
+    <button onclick="closeSandbox()" style="background:none;border:1px solid var(--sb-b);color:var(--sb-text);font-family:var(--fm);font-size:10px;padding:5px 12px;cursor:pointer">✕ EXIT SANDBOX</button>
+  </div>
+  <div class="sb-body" id="sandbox-body">
+    <div class="note" style="border-color:var(--sb-b);color:var(--sb-text);margin-bottom:16px">
+      This sandbox uses pre-computed results from <code>demo/sample_data/watchlist_*.json</code>.
+      These are outputs of calling real detector functions against synthetic sample data.
+      They are <strong>not</strong> live data and <strong>do not appear</strong> anywhere in the live dashboard.
+    </div>
+    <div id="sb-content"><div class="loading">Loading sandbox index…</div></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const API = "http://127.0.0.1:8000";
+
+// ── Utility ────────────────────────────────────────────────────────────────
+
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function ts(){ return new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata",hour12:false}); }
+function sev(s){
+  const cls={"critical":"sev-critical","high":"sev-high","medium":"sev-medium","low":"sev-low"}[s]||"sev-none";
+  return `<span class="sev ${cls}">${esc(s||"—")}</span>`;
+}
+function dotClass(degraded){ return degraded?"dot dot-err":"dot dot-ok"; }
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+function tickClock(){ document.getElementById("mode-time").textContent = "IST "+ts(); }
+tickClock(); setInterval(tickClock, 1000);
+
+// ── API helper ─────────────────────────────────────────────────────────────
+async function api(path, opts={}){
+  const r = await fetch(API+path, opts);
+  const data = await r.json();
+  if(!r.ok) throw Object.assign(new Error(data.detail||r.statusText), {status:r.status, data});
+  return data;
+}
+
+// ── API status check ───────────────────────────────────────────────────────
+async function checkApiStatus(){
+  const el = document.getElementById("api-status");
+  try{
+    await api("/health");
+    el.textContent="connected";el.style.color="var(--re)";
+  }catch{
+    el.textContent="offline";el.style.color="var(--cr)";
+  }
+}
+checkApiStatus(); setInterval(checkApiStatus, 30000);
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+const PAGE_LOADERS = {
+  cmd:         loadCommandCenter,
+  watchlist:   loadWatchlist,
+  alerts:      loadAlerts,
+  audit:       loadAudit,
+  datasources: loadDataSources,
+  backtest:    loadBacktest,
+  engineering: loadEngineering,
+};
+
+function nav(id){
+  document.querySelectorAll(".sn-link").forEach(l=>l.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById("page-"+id).classList.add("active");
+  document.querySelector(`[onclick="nav('${id}')"]`).classList.add("active");
+  closeDrawer();
+  if(PAGE_LOADERS[id]) PAGE_LOADERS[id]();
+}
+
+// ── Drawer ─────────────────────────────────────────────────────────────────
+function openDrawer(title, html){
+  document.getElementById("drawer-title").textContent=title;
+  document.getElementById("drawer-body").innerHTML=html;
+  document.getElementById("drawer").classList.add("open");
+}
+function closeDrawer(){ document.getElementById("drawer").classList.remove("open"); }
+
+// ══════════════════════════════════════════════════════════════════════════
+// PAGE: COMMAND CENTER
+// ══════════════════════════════════════════════════════════════════════════
+async function loadCommandCenter(){
+  const lede=document.getElementById("cmd-lede");
+  const errEl=document.getElementById("cmd-error");
+  errEl.innerHTML="";
+  try{
+    // Run all three fetches in parallel — they are independent
+    const [alertsResp, sourcesResp] = await Promise.all([
+      api("/api/alerts?page_size=20"),
+      api("/api/system/data-sources"),
+    ]);
+
+    // Severity summary tiles
+    const sevs=["critical","high","medium","low"];
+    const counts={};
+    sevs.forEach(s=>counts[s]=0);
+    // Get full counts per severity
+    const countProms = sevs.map(s=>api(`/api/alerts?severity=${s}&status=open&page_size=1`)
+      .then(r=>{counts[s]=r.total;}).catch(()=>{}));
+    await Promise.all(countProms);
+
+    const sevCards=document.getElementById("cmd-sev-cards");
+    sevCards.innerHTML=sevs.map(s=>`
+      <div class="card" style="cursor:pointer" onclick="nav('alerts');document.getElementById('al-sev').value='${s}';loadAlerts()">
+        <div class="card-val" style="color:${s==="critical"?"#ef4444":s==="high"?"#f97316":s==="medium"?"#eab308":"#6b7280"}">${counts[s]}</div>
+        <div class="card-unit">open alerts</div>
+        <div class="card-lbl">${s.toUpperCase()}</div>
+      </div>`).join("")
+    + `<div class="card"><div class="card-val">${alertsResp.total}</div>
+        <div class="card-unit">total alerts</div><div class="card-lbl">ALL TIME (all statuses)</div></div>`;
+
+    // Source health tiles
+    const srcCards=document.getElementById("cmd-source-cards");
+    const integrated=sourcesResp.sources.filter(s=>s.circuit_state!=="NOT_INTEGRATED");
+    const notInt=sourcesResp.sources.filter(s=>s.circuit_state==="NOT_INTEGRATED");
+    srcCards.innerHTML=integrated.map(s=>`
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="${dotClass(s.degraded)}"></span>
+          <span class="card-unit">${esc(s.source)}</span>
+        </div>
+        <div class="card-lbl">${esc(s.circuit_state)}</div>
+        <div class="card-sub">failures: ${s.consecutive_failures}</div>
+      </div>`).join("")
+    + notInt.map(s=>`
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="dot dot-gray"></span>
+          <span class="card-unit">${esc(s.source)}</span>
+        </div>
+        <div class="card-lbl">NOT INTEGRATED</div>
+      </div>`).join("");
+
+    // Recent alerts feed
+    const alertTbl=document.getElementById("cmd-alert-tbl");
+    if(!alertsResp.items||alertsResp.items.length===0){
+      alertTbl.innerHTML=`<div class="empty-state">No alerts in DB. The database is empty — run the detection pipeline to populate.<br><code style="font-size:10px">POST /api/detect/spoofing {instrument_id, window_minutes}</code></div>`;
+    }else{
+      alertTbl.innerHTML=`<table>
+        <thead><tr><th>Detected</th><th>Instrument</th><th>Pattern</th><th>Severity</th><th>Score</th><th>Status</th></tr></thead>
+        <tbody>${alertsResp.items.map(a=>`<tr class="clickable" onclick="openAlertDetail('${esc(a.id)}')">
+          <td style="white-space:nowrap">${esc(a.detected_at||a.window_start||"—")}</td>
+          <td class="sym">${esc(a.instrument_symbol)}<br><span style="font-size:10px;color:var(--t3)">${esc(a.exchange)}</span></td>
+          <td>${esc(a.pattern_type)}</td>
+          <td>${sev(a.severity)}</td>
+          <td>${typeof a.score==="number"?a.score.toFixed(3):"—"}</td>
+          <td><span style="font-family:var(--fm);font-size:10px;color:var(--t2)">${esc(a.status)}</span></td>
+        </tr>`).join("")}</tbody></table>`;
+    }
+
+    lede.textContent=`Summary loaded from real backend. Total: ${alertsResp.total} alerts · ${integrated.filter(s=>!s.degraded).length}/${integrated.length} sources OK.`;
+
+  }catch(e){
+    errEl.innerHTML=`<div class="error-box">⚠ API error: ${esc(e.status||"")} — ${esc(e.message)}</div>`;
+    lede.textContent="Failed to load — see error above.";
+    console.error("Command Center load error:", e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PAGE: WATCHLIST
+// ══════════════════════════════════════════════════════════════════════════
+async function loadWatchlist(){
+  const tbl=document.getElementById("wl-tbl");
+  tbl.innerHTML=`<div class="loading">Loading from GET /api/instruments…</div>`;
+  try{
+    const ex=document.getElementById("wl-exchange").value;
+    const tp=document.getElementById("wl-type").value;
+    let url="/api/instruments";
+    const q=[];
+    if(ex) q.push("exchange="+ex);
+    if(tp) q.push("instrument_type="+tp);
+    if(q.length) url+="?"+q.join("&");
+
+    const data=await api(url);
+    if(!data||data.length===0){
+      tbl.innerHTML=`<div class="empty-state">No instruments in DB. Add instruments via the detection API or directly.</div>`;
+      return;
+    }
+    tbl.innerHTML=`<table>
+      <thead><tr><th>Symbol</th><th>Exchange</th><th>Type</th><th>Avg Vol 30d</th><th>Alert Status (24h)</th><th>Open Alerts</th></tr></thead>
+      <tbody>${data.map(i=>`<tr class="clickable" onclick="openInstrumentDetail('${esc(i.id)}', '${esc(i.symbol)}')">
+        <td class="sym">${esc(i.symbol)}</td>
+        <td>${esc(i.exchange)}</td>
+        <td><span style="font-family:var(--fm);font-size:10px;color:var(--t3)">${esc(i.instrument_type)}</span></td>
+        <td>${i.avg_daily_volume_30d!=null?Number(i.avg_daily_volume_30d).toLocaleString():"—"}</td>
+        <td>${i.last_alert_severity?sev(i.last_alert_severity):`<span style="color:var(--re);font-family:var(--fm);font-size:10px">✓ clean</span>`}</td>
+        <td>${i.open_alert_count||0}</td>
+      </tr>`).join("")}</tbody></table>`;
+  }catch(e){
+    tbl.innerHTML=`<div class="error-box">⚠ API error: ${esc(e.status||"")} — ${esc(e.message)}</div>`;
+    console.error("Watchlist error:", e);
+  }
+}
+
+async function openInstrumentDetail(id, sym){
+  openDrawer(`Instrument — ${sym}`, `<div class="loading">Loading…</div>`);
+  try{
+    const i=await api(`/api/instruments/${id}`);
+    const alerts=await api(`/api/alerts?instrument_id=${id}&page_size=20`);
+    let html=`
+      <div class="note ok"><strong>${esc(i.symbol)}</strong> · ${esc(i.exchange)} · ${esc(i.instrument_type)}</div>
+      <table style="margin-bottom:16px">
+        ${[["Avg daily vol 30d", i.avg_daily_volume_30d!=null?Number(i.avg_daily_volume_30d).toLocaleString():"—"],
+           ["Avg order size 30d", i.avg_order_size_30d!=null?Number(i.avg_order_size_30d).toLocaleString():"—"],
+           ["Avg daily turnover 30d", i.avg_daily_turnover_30d!=null?"₹"+Number(i.avg_daily_turnover_30d).toLocaleString():"—"],
+           ["Underlying", i.underlying_symbol||"—"],
+           ["Strike", i.strike_price!=null?i.strike_price:"—"],
+           ["Expiry", i.expiry_date||"—"],
+           ["Option type", i.option_type||"—"],
+        ].map(([k,v])=>`<tr><td style="color:var(--t3)">${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}
+      </table>
+      <h3>Alert history (last 20)</h3>`;
+    if(!alerts.items||alerts.items.length===0){
+      html+=`<div class="empty-state">No alerts for this instrument.</div>`;
+    }else{
+      html+=`<table><thead><tr><th>Pattern</th><th>Sev</th><th>Score</th><th>Status</th></tr></thead><tbody>
+        ${alerts.items.map(a=>`<tr class="clickable" onclick="openAlertDetail('${esc(a.id)}')">
+          <td>${esc(a.pattern_type)}</td><td>${sev(a.severity)}</td>
+          <td>${typeof a.score==="number"?a.score.toFixed(3):"—"}</td>
+          <td><span style="font-size:10px">${esc(a.status)}</span></td>
+        </tr>`).join("")}</tbody></table>`;
+    }
+    document.getElementById("drawer-body").innerHTML=html;
+  }catch(e){
+    document.getElementById("drawer-body").innerHTML=`<div class="error-box">⚠ ${esc(e.message)}</div>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PAGE: ALERTS
+// ══════════════════════════════════════════════════════════════════════════
+let alertPage=1;
+async function loadAlerts(page){
+  if(page) alertPage=page;
+  const tbl=document.getElementById("al-tbl");
+  const pager=document.getElementById("al-pager");
+  tbl.innerHTML=`<div class="loading">Loading…</div>`;
+  try{
+    const sev=document.getElementById("al-sev").value;
+    const status=document.getElementById("al-status").value;
+    const pat=document.getElementById("al-pattern").value;
+    const q=new URLSearchParams({page:alertPage,page_size:50});
+    if(sev) q.set("severity",sev);
+    if(status) q.set("status",status);
+    if(pat) q.set("pattern_type",pat);
+
+    const data=await api("/api/alerts?"+q);
+    document.getElementById("al-count").textContent=`${data.total} matching`;
+
+    if(!data.items||data.items.length===0){
+      tbl.innerHTML=`<div class="empty-state">No alerts match the current filters.</div>`;
+      pager.innerHTML="";
+      return;
+    }
+
+    tbl.innerHTML=`<table>
+      <thead><tr><th>Detected</th><th>Instrument</th><th>Pattern</th><th>Sev</th><th>Score</th><th>Status</th><th>Accounts</th></tr></thead>
+      <tbody>${data.items.map(a=>`<tr class="clickable" onclick="openAlertDetail('${esc(a.id)}')">
+        <td style="white-space:nowrap;font-size:10px">${esc((a.window_start||"").slice(0,16))}</td>
+        <td class="sym">${esc(a.instrument_symbol)}<br><span style="font-size:10px;color:var(--t3)">${esc(a.exchange)}</span></td>
+        <td><span style="font-size:10px">${esc(a.pattern_type)}</span></td>
+        <td>${sev(a.severity)}</td>
+        <td>${typeof a.score==="number"?a.score.toFixed(3):"—"}</td>
+        <td><span style="font-size:10px;color:${a.status==="escalated"?"var(--cr)":a.status==="open"?"var(--sy)":"var(--t3)"}">${esc(a.status)}</span></td>
+        <td style="font-size:10px">${(a.accounts_involved||[]).length}</td>
+      </tr>`).join("")}</tbody></table>`;
+
+    // Pager
+    const total=data.total, ps=data.page_size, pg=data.page, pages=Math.ceil(total/ps);
+    pager.innerHTML=`
+      <button ${pg<=1?"disabled":""} onclick="loadAlerts(${pg-1})">◀ Prev</button>
+      <span>Page ${pg} of ${pages} (${total} total)</span>
+      <button ${pg>=pages?"disabled":""} onclick="loadAlerts(${pg+1})">Next ▶</button>`;
+  }catch(e){
+    tbl.innerHTML=`<div class="error-box">⚠ API error: ${esc(e.status||"")} — ${esc(e.message)}</div>`;
+    console.error("Alerts error:", e);
+  }
+}
+
+async function openAlertDetail(alertId){
+  openDrawer("Alert Detail", `<div class="loading">Loading real alert…</div>`);
+  try{
+    const a=await api(`/api/alerts/${alertId}`);
+    let html=`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        ${sev(a.severity)}
+        <span style="font-family:var(--fm);font-size:20px;font-weight:700">${typeof a.score==="number"?a.score.toFixed(3):"—"}</span>
+        <span style="font-family:var(--fm);font-size:10px;color:var(--t3)">${esc(a.pattern_type)}</span>
+      </div>
+      <div class="note">${esc(a.explanation)}</div>
+      <table style="margin:10px 0">
+        ${[["Instrument",a.instrument_symbol+" ("+a.exchange+")"],
+           ["Window", (a.window_start||"").slice(0,16)+" → "+(a.window_end||"").slice(0,16)],
+           ["Accounts", (a.accounts_involved||[]).join(", ")||"—"],
+           ["Status", a.status],
+           ["Escalated to SEBI", a.escalated_to_sebi?"Yes":"No"],
+        ].map(([k,v])=>`<tr><td style="color:var(--t3);white-space:nowrap">${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}
+      </table>
+
+      <h3>Lifecycle — PATCH /api/alerts/${esc(alertId)}/status</h3>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        ${["open","investigating","escalated","closed"].map(s=>`
+          <button class="btn ${a.status===s?"btn-primary":""}" onclick="updateStatus('${esc(alertId)}','${s}')">${s}</button>`).join("")}
+      </div>
+      <div id="status-msg-${esc(alertId)}" style="font-family:var(--fm);font-size:11px;min-height:18px"></div>
+
+      <h3 style="margin-top:12px">SEBI SAR — POST /api/alerts/${esc(alertId)}/escalate-to-sebi</h3>
+      <div class="note warn">Generates a real SAR draft using app/alerts/sebi_report.py. Does NOT auto-file with SEBI — analyst must review and submit via SEBI SCORES portal.</div>
+      <button class="btn" onclick="generateSAR('${esc(alertId)}')">Generate SAR Draft</button>
+      <div id="sar-content-${esc(alertId)}" style="margin-top:10px"></div>
+
+      <h3 style="margin-top:16px">Evidence Log — GET /api/alerts/${esc(alertId)}/evidence-log</h3>
+      <button class="btn" onclick="loadEvidenceLog('${esc(alertId)}')">Load Evidence Log</button>
+      <div id="ev-content-${esc(alertId)}" style="margin-top:8px"></div>`;
+
+    document.getElementById("drawer-body").innerHTML=html;
+  }catch(e){
+    document.getElementById("drawer-body").innerHTML=`<div class="error-box">⚠ ${esc(e.status||"")} — ${esc(e.message)}</div>`;
+    console.error("Alert detail error:", e);
+  }
+}
+
+async function updateStatus(alertId, newStatus){
+  const el=document.getElementById(`status-msg-${alertId}`);
+  el.textContent="Sending PATCH…"; el.style.color="var(--sy)";
+  try{
+    const r=await api(`/api/alerts/${alertId}/status`,{
+      method:"PATCH",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({new_status:newStatus,notes:""})
+    });
+    el.textContent=`✓ Status updated to: ${r.status}`; el.style.color="var(--re)";
+    loadAlerts(); // Refresh list
+    console.log("PATCH /api/alerts/"+alertId+"/status response:", r);
+  }catch(e){
+    el.textContent=`⚠ ${e.message}`; el.style.color="var(--cr)";
+  }
+}
+
+async function generateSAR(alertId){
+  const el=document.getElementById(`sar-content-${alertId}`);
+  el.innerHTML=`<div class="loading">Generating SAR via sebi_report.py…</div>`;
+  try{
+    const r=await api(`/api/alerts/${alertId}/escalate-to-sebi`,{method:"POST"});
+    console.log("POST escalate-to-sebi response:", r);
+    el.innerHTML=`
+      <div class="note ok">SAR Draft generated — Case ref: <strong>${esc(r.case_reference)}</strong></div>
+      <div style="font-family:var(--fm);font-size:10px;color:var(--t2);line-height:1.7;
+        max-height:300px;overflow-y:auto;background:var(--sf2);padding:10px;border:1px solid var(--b2);
+        white-space:pre-wrap;word-break:break-word">${esc(r.text_document||"")}</div>
+      <div class="note warn" style="margin-top:8px">This draft has NOT been filed with SEBI. Review for factual accuracy, attach evidence logs, and submit via SEBI SCORES portal.</div>`;
+  }catch(e){
+    el.innerHTML=`<div class="error-box">⚠ SAR generation failed: ${esc(e.message)}</div>`;
+  }
+}
+
+async function loadEvidenceLog(alertId){
+  const el=document.getElementById(`ev-content-${alertId}`);
+  el.innerHTML=`<div class="loading">Loading evidence log…</div>`;
+  try{
+    const r=await api(`/api/alerts/${alertId}/evidence-log`);
+    console.log("GET evidence-log response:", r);
+    if(!r.rows||r.rows.length===0){
+      el.innerHTML=`<div class="empty-state">No order rows in evidence log for this alert (DB may be empty).</div>`;
+      return;
+    }
+    el.innerHTML=`
+      <div class="note" style="margin-bottom:8px">Score: ${r.score} · ${r.severity} · Accounts: ${(r.accounts_involved||[]).join(", ")}</div>
+      <div style="overflow-x:auto"><table><thead><tr>
+        <th>Time</th><th>Account</th><th>Side</th><th>Status</th><th>Price</th><th>Qty</th>
+      </tr></thead><tbody>${r.rows.map(row=>`<tr>
+        <td style="font-size:10px;white-space:nowrap">${esc((row.timestamp||"").slice(0,16))}</td>
+        <td style="font-family:var(--fm);font-size:10px">${esc(row.account_id)}</td>
+        <td>${esc(row.side)}</td>
+        <td style="font-size:10px;color:${row.status==="cancelled"?"var(--cr)":"var(--re)"}">${esc(row.status)}</td>
+        <td>${row.price!=null?Number(row.price).toLocaleString():"—"}</td>
+        <td>${row.quantity!=null?Number(row.quantity).toLocaleString():"—"}</td>
+      </tr>`).join("")}</tbody></table></div>`;
+  }catch(e){
+    el.innerHTML=`<div class="error-box">⚠ ${esc(e.message)}</div>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PAGE: AUDIT
+// ══════════════════════════════════════════════════════════════════════════
+let auditPage=1;
+async function loadAudit(page){
+  if(page) auditPage=page;
+  const tbl=document.getElementById("audit-tbl");
+  const pager=document.getElementById("audit-pager");
+  tbl.innerHTML=`<div class="loading">Loading…</div>`;
+  try{
+    const alertId=document.getElementById("audit-alert-id").value.trim();
+    const q=new URLSearchParams({page:auditPage,page_size:100});
+    if(alertId) q.set("alert_id",alertId);
+
+    const data=await api("/api/audit/evidence-access?"+q);
+    document.getElementById("audit-count").textContent=`${data.total} records`;
+
+    if(!data.items||data.items.length===0){
+      tbl.innerHTML=`<div class="empty-state">No evidence access log records. Evidence access is logged automatically each time /api/alerts/{id}/evidence-log is called.</div>`;
+      pager.innerHTML="";
+      return;
+    }
+    tbl.innerHTML=`<table>
+      <thead><tr><th>Accessed at</th><th>Alert ID</th><th>Accessed by</th><th>Raw IDs?</th><th>Row count</th><th>Source IP</th></tr></thead>
+      <tbody>${data.items.map(r=>`<tr>
+        <td style="font-size:10px;white-space:nowrap">${esc((r.accessed_at||"").slice(0,19))}</td>
+        <td style="font-family:var(--fm);font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(r.alert_id)}</td>
+        <td>${esc(r.accessed_by)}</td>
+        <td style="color:${r.used_raw_ids?"var(--cr)":"var(--re)"};font-weight:700">${r.used_raw_ids?"YES — RAW":"hashed"}</td>
+        <td>${r.evidence_row_count}</td>
+        <td style="font-size:10px">${esc(r.source_ip||"—")}</td>
+      </tr>`).join("")}</tbody></table>`;
+
+    const pg=data.page, ps=data.page_size, total=data.total, pages=Math.ceil(total/ps);
+    pager.innerHTML=`
+      <button ${pg<=1?"disabled":""} onclick="loadAudit(${pg-1})">◀ Prev</button>
+      <span>Page ${pg} of ${pages}</span>
+      <button ${pg>=pages?"disabled":""} onclick="loadAudit(${pg+1})">Next ▶</button>`;
+  }catch(e){
+    tbl.innerHTML=`<div class="error-box">⚠ ${esc(e.status||"")} — ${esc(e.message)}</div>`;
+    console.error("Audit error:", e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PAGE: DATA SOURCES
+// ══════════════════════════════════════════════════════════════════════════
+async function loadDataSources(){
+  const errEl=document.getElementById("ds-error");
+  errEl.innerHTML="";
+  try{
+    const [src, det] = await Promise.all([
+      api("/api/system/data-sources"),
+      api("/api/system/detector-status"),
+    ]);
+
+    // Source table
+    document.getElementById("ds-source-tbl").innerHTML=`<table>
+      <thead><tr><th>Source</th><th>State</th><th>Consec. failures</th><th>Threshold</th><th>Cooldown (s)</th><th>Last success</th></tr></thead>
+      <tbody>${src.sources.map(s=>`<tr>
+        <td><strong>${esc(s.source)}</strong><br><span style="font-size:10px;color:var(--t3)">${esc(s.description)}</span></td>
+        <td><span class="${dotClass(s.degraded)}" style="margin-right:6px"></span>
+            <span style="font-family:var(--fm);font-size:11px;color:${s.circuit_state==="OPEN"?"var(--cr)":s.circuit_state==="HALF_OPEN"?"var(--sy)":s.circuit_state==="NOT_INTEGRATED"?"var(--t4)":"var(--re)"}">${esc(s.circuit_state)}</span></td>
+        <td>${s.consecutive_failures!=null?s.consecutive_failures:"—"}</td>
+        <td>${s.failure_threshold!=null?s.failure_threshold:"—"}</td>
+        <td>${s.cooldown_seconds!=null?s.cooldown_seconds:"—"}</td>
+        <td style="font-size:10px">${s.last_successful_fetch?new Date(s.last_successful_fetch*1000).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}):"never (this session)"}</td>
+      </tr>`).join("")}</tbody></table>`;
+
+    // Detector table
+    document.getElementById("ds-honest-note").textContent=det.honest_summary;
+    document.getElementById("ds-det-tbl").innerHTML=`<table>
+      <thead><tr><th>Detector</th><th>Real manip. validated</th><th>Neg. control tested</th><th>Threshold label</th><th>Thresholds</th></tr></thead>
+      <tbody>${det.detectors.map(d=>`<tr>
+        <td><strong>${esc(d.id)}</strong><br><span style="font-size:10px;color:var(--t3)">${esc(d.description)}</span></td>
+        <td style="color:${d.validated_against_real_manipulation?"var(--re)":"var(--cr)"}">
+          ${d.validated_against_real_manipulation?"YES":"NO"}</td>
+        <td style="color:${d.negative_control_tested?"var(--re)":"var(--t3)"}">
+          ${d.negative_control_tested?"YES (0.0% FP, 90 days)":"not tested"}</td>
+        <td style="font-size:10px;color:${d.threshold_labels.includes("UNVALIDATED")?"var(--cr)":"var(--sy)"}">${esc(d.threshold_labels)}</td>
+        <td style="font-family:var(--fm);font-size:10px;max-width:220px">
+          ${Object.entries(d.thresholds||{}).map(([k,v])=>`${k}: ${v}`).join("<br>")}</td>
+      </tr>`).join("")}</tbody></table>`;
+
+  }catch(e){
+    errEl.innerHTML=`<div class="error-box">⚠ API error: ${esc(e.status||"")} — ${esc(e.message)}</div>`;
+    console.error("Data sources error:", e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PAGE: BACKTEST
+// ══════════════════════════════════════════════════════════════════════════
+async function loadBacktest(){
+  const errEl=document.getElementById("bt-error");
+  const cards=document.getElementById("bt-summary-cards");
+  const cases=document.getElementById("bt-cases");
+  errEl.innerHTML=""; cases.innerHTML=`<div class="loading">Loading…</div>`;
+  try{
+    const d=await api("/api/backtest/results");
+    console.log("GET /api/backtest/results:", d);
+    const s=d.summary;
+
+    cards.innerHTML=`
+      <div class="card"><div class="card-val">${s.total_cases}</div><div class="card-unit">SEBI cases</div></div>
+      <div class="card"><div class="card-val" style="color:var(--cr)">${s.untestable}</div><div class="card-unit">untestable</div><div class="card-lbl">public data limitation</div></div>
+      <div class="card"><div class="card-val">${s.negative_control_days}</div><div class="card-unit">real NSE days</div><div class="card-lbl">negative control</div></div>
+      <div class="card"><div class="card-val" style="color:var(--re)">${s.negative_control_fp_rate*100}%</div><div class="card-unit">false positive rate</div><div class="card-lbl">large-cap equities</div></div>`;
+
+    let html=`<div class="note warn" style="margin-bottom:16px">${esc(s.honest_note)}</div>`;
+
+    // Per-case results
+    (d.cases||[]).forEach(c=>{
+      html+=`
+        <div style="border:1px solid var(--b2);background:var(--sf);margin-bottom:12px">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--b2);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <strong>${esc(c.case_id||c._source_file)}</strong>
+            <span style="font-family:var(--fm);font-size:10px;padding:2px 7px;
+              background:${c.run_verdict==="UNTESTABLE"?"rgba(239,68,68,.15)":"rgba(245,158,11,.1)"};
+              color:${c.run_verdict==="UNTESTABLE"?"#fca5a5":"var(--sy)"}">${esc(c.run_verdict||"—")}</span>
+          </div>
+          <div style="padding:10px 14px">
+            <div style="font-size:12px;color:var(--t2);margin-bottom:8px">${esc(c.alleged_pattern||"")}</div>
+            <div style="font-size:11px;color:var(--t3);margin-bottom:6px">${esc(c.summary||c.data_quality_note||"")}</div>
+            ${c.inapplicable_detectors?`<div style="font-family:var(--fm);font-size:10px;color:var(--t4);line-height:1.7">
+              ${Object.entries(c.inapplicable_detectors).map(([k,v])=>`<div><span style="color:var(--t3)">${esc(k)}</span>: ${esc(v)}</div>`).join("")}
+            </div>`:""}
+          </div>
+        </div>`;
+    });
+
+    // Negative controls
+    if(d.negative_controls&&d.negative_controls.summary){
+      const nc=d.negative_controls;
+      html+=`<h3 style="margin-top:8px">Negative Control — Per Symbol</h3>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Symbol</th><th>Days tested</th><th>Days flagged</th><th>FP rate</th></tr></thead>
+          <tbody>${Object.entries(nc.per_symbol||{}).map(([sym,v])=>`<tr>
+            <td class="sym">${esc(sym)}</td>
+            <td>${v.dates_tested||v.false_positive_rate!=null?v.dates_tested:"—"}</td>
+            <td style="color:var(--re)">${v.dates_flagged||0}</td>
+            <td style="color:var(--re)">${(v.fp_rate||v.false_positive_rate||0)*100}%</td>
+          </tr>`).join("")}</tbody></table></div>`;
+    }
+
+    cases.innerHTML=html;
+  }catch(e){
+    errEl.innerHTML=`<div class="error-box">⚠ ${esc(e.status||"")} — ${esc(e.message)}</div>`;
+    cases.innerHTML="";
+    console.error("Backtest error:", e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PAGE: ENGINEERING HEALTH
+// ══════════════════════════════════════════════════════════════════════════
+async function loadEngineering(){
+  const el=document.getElementById("eng-content");
+  el.innerHTML=`<div class="loading">Loading from GET /api/system/engineering-health…</div>`;
+  try{
+    const d=await api("/api/system/engineering-health");
+    console.log("GET /api/system/engineering-health:", d);
+
+    if(d.status==="no_test_run_recorded"){
+      el.innerHTML=`<div class="empty-state">${esc(d.message)}<br><br>
+        <code style="font-size:11px">python dashboard/scripts/run_and_save_health.py</code></div>`;
+      return;
+    }
+    if(d.status==="error_reading_file"){
+      el.innerHTML=`<div class="error-box">Error reading health file: ${esc(d.error)}</div>`;
+      return;
+    }
+
+    const runs=d.runs||{};
+    let html=`<div class="note" style="margin-bottom:16px">Recorded at: <strong>${esc(d.recorded_at)}</strong></div>`;
+
+    // pytest
+    if(runs.pytest){
+      const r=runs.pytest;
+      const ok=r.returncode===0;
+      html+=`<div style="border:1px solid ${ok?"var(--rd)":"#7f1d1d"};background:${ok?"var(--rb)":"rgba(239,68,68,.08)"};padding:12px 16px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <span style="font-family:var(--fm);font-size:13px;font-weight:700;color:${ok?"var(--re)":"var(--cr)"}">${ok?"PASS":"FAIL"}</span>
+          <strong>Full test suite — pytest tests/</strong>
+        </div>
+        <div class="cards" style="margin-bottom:0">
+          <div class="card"><div class="card-val" style="color:var(--re)">${r.passed??""}</div><div class="card-unit">tests passed</div></div>
+          <div class="card"><div class="card-val" style="color:${(r.failed||0)>0?"var(--cr)":"var(--re)"}">${r.failed??0}</div><div class="card-unit">failed</div></div>
+          <div class="card"><div class="card-val">${r.duration_s??""}</div><div class="card-unit">seconds</div></div>
+        </div>
+      </div>`;
+    }
+
+    // Stress tests
+    ["stress_ingestion","stress_concurrent"].forEach(key=>{
+      const r=runs[key];
+      if(!r) return;
+      const name=key==="stress_ingestion"?"Ingestion Volume Stress":"Concurrent Access Stress";
+      if(r.status==="file_not_found"){
+        html+=`<div class="note" style="margin-bottom:12px">${esc(name)}: ${esc(r.note)}</div>`;
+        return;
+      }
+      const ok=r.returncode===0;
+      html+=`<div style="border:1px solid ${ok?"var(--rd)":"#7f1d1d"};padding:12px 16px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <span style="font-family:var(--fm);font-size:12px;font-weight:700;color:${ok?"var(--re)":"var(--cr)"}">${ok?"PASS":"FAIL"}</span>
+          <strong>${esc(name)}</strong>
+          <span style="font-family:var(--fm);font-size:10px;color:var(--t3)">${r.duration_s}s</span>
+        </div>
+        <details><summary style="cursor:pointer;font-family:var(--fm);font-size:10px;color:var(--t3)">Output (last 1.5KB)</summary>
+          <pre style="font-size:10px;color:var(--t2);overflow-x:auto;white-space:pre-wrap;margin-top:6px">${esc(r.raw_tail||"")}</pre>
+        </details>
+      </div>`;
+    });
+
+    el.innerHTML=html;
+  }catch(e){
+    el.innerHTML=`<div class="error-box">⚠ ${esc(e.status||"")} — ${esc(e.message)}</div>`;
+    console.error("Engineering error:", e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SANDBOX (isolated — zero shared state with live pages)
+// ══════════════════════════════════════════════════════════════════════════
+// ISOLATION PROOF:
+// - Live pages call: fetch("http://127.0.0.1:8000/api/...")
+// - Sandbox calls:   fetch("../../demo/sample_data/watchlist_index.json")
+// - There are no shared variables, no shared cache, no shared DOM nodes.
+// - sandbox_wl_data, sandbox_sel_asset, sandbox_sel_cond are local to this
+//   IIFE and inaccessible from any live-page function.
+
+(function sandboxScope(){
+  let sb_index=null, sb_data={}, sb_sel_asset=null, sb_sel_cond=null;
+  const SAMPLE_BASE="../../demo/sample_data/";
+
+  window.openSandbox=async function(){
+    document.getElementById("sandbox-overlay").classList.add("open");
+    if(sb_index) return renderSandboxAssets();
+
+    const sb=document.getElementById("sb-content");
+    try{
+      const r=await fetch(SAMPLE_BASE+"watchlist_index.json");
+      if(!r.ok) throw new Error("Cannot load watchlist_index.json: "+r.status);
+      sb_index=await r.json();
+
+      // Preload all data files
+      for(const asset of sb_index.assets){
+        for(const cond of asset.conditions){
+          const cr=await fetch(SAMPLE_BASE+cond.file);
+          if(cr.ok) sb_data[asset.id+"_"+cond.id]=await cr.json();
+        }
+      }
+      renderSandboxAssets();
+    }catch(e){
+      sb.innerHTML=`<div class="error-box">⚠ Cannot load sandbox data: ${esc(e.message)}<br>Ensure the dashboard is served from repo root or open via FastAPI at /dashboard/.</div>`;
+    }
+  };
+
+  function renderSandboxAssets(){
+    const sb=document.getElementById("sb-content");
+    if(!sb_index) return;
+    sb.innerHTML=`<div style="display:grid;grid-template-columns:200px 1fr 320px;gap:1px;background:var(--b2);min-height:400px">
+      <div style="background:var(--sf);padding:12px" id="sb-asset-list">
+        <div style="font-family:var(--fm);font-size:10px;letter-spacing:.1em;color:var(--sb-text);margin-bottom:8px">ASSETS</div>
+        ${sb_index.assets.map(a=>`<div onclick="sbSelectAsset('${a.id}')" id="sb-row-${a.id}"
+          style="padding:8px 10px;cursor:pointer;border-left:2px solid transparent;
+          font-family:var(--fm);font-size:11px;transition:all .1s" class="sb-asset-row">
+          <div style="font-weight:700;color:var(--t1)">${esc(a.display_name)}</div>
+          <div style="font-size:10px;color:var(--t3)">${esc(a.type_label)}</div>
+        </div>`).join("")}
+      </div>
+      <div id="sb-ctrl" style="background:var(--sf2);padding:16px">
+        <div style="font-family:var(--fm);font-size:11px;color:var(--t3)">Select an asset to configure scan</div>
+      </div>
+      <div id="sb-result" style="background:var(--sf);padding:16px;border-left:1px solid var(--b2)">
+        <div style="font-family:var(--fm);font-size:11px;color:var(--t3)">Run scan to see result</div>
+      </div>
+    </div>`;
+  }
+
+  window.sbSelectAsset=function(assetId){
+    sb_sel_asset=assetId; sb_sel_cond=null;
+    document.querySelectorAll(".sb-asset-row").forEach(r=>{ r.style.background=""; r.style.borderLeftColor="transparent"; r.style.color=""; });
+    const row=document.getElementById("sb-row-"+assetId);
+    if(row){ row.style.background="var(--sf3)"; row.style.borderLeftColor="var(--sb-b)"; }
+
+    const asset=sb_index.assets.find(a=>a.id===assetId);
+    if(!asset) return;
+
+    const ctrl=document.getElementById("sb-ctrl");
+    ctrl.innerHTML=`
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(asset.display_name)}</div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:14px">${esc(asset.description)}</div>
+      <div style="font-family:var(--fm);font-size:10px;color:var(--t3);margin-bottom:8px">CONDITION</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        ${asset.conditions.map(c=>`<button id="sbcbtn-${c.id}" onclick="sbSelectCond('${assetId}','${c.id}','${esc(c.description)}')"
+          style="font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.06em;padding:6px 12px;
+          border:1px solid var(--b2);background:none;color:var(--t2);cursor:pointer;transition:all .12s;text-transform:uppercase"
+          class="sb-cond-btn">${esc(c.label)}</button>`).join("")}
+      </div>
+      <div id="sb-cond-desc" style="font-size:11px;color:var(--t2);border-left:2px solid var(--b3);padding:6px 12px;margin-bottom:12px">
+        Select a condition above
+      </div>
+      <button id="sb-run-btn" onclick="sbRunScan()" disabled
+        style="font-family:var(--fm);font-size:11px;font-weight:700;letter-spacing:.08em;padding:9px 20px;
+        background:var(--sb-b);color:#000;border:none;cursor:pointer;text-transform:uppercase;opacity:.5"
+        class="sb-run-btn">Run Scan</button>`;
+  };
+
+  window.sbSelectCond=function(assetId, condId, desc){
+    sb_sel_cond=condId;
+    document.querySelectorAll(".sb-cond-btn").forEach(b=>{ b.style.background="none"; b.style.color="var(--t2)"; });
+    const btn=document.getElementById("sbcbtn-"+condId);
+    if(btn){ btn.style.background="rgba(14,165,233,.15)"; btn.style.color="var(--sb-text)"; btn.style.borderColor="var(--sb-b)"; }
+    const descEl=document.getElementById("sb-cond-desc");
+    if(descEl) descEl.textContent=desc;
+    const runBtn=document.getElementById("sb-run-btn");
+    if(runBtn){ runBtn.disabled=false; runBtn.style.opacity="1"; }
+  };
+
+  window.sbRunScan=function(){
+    if(!sb_sel_asset||!sb_sel_cond) return;
+    const key=sb_sel_asset+"_"+sb_sel_cond;
+    const data=sb_data[key];
+    const res=document.getElementById("sb-result");
+    if(!data){ res.innerHTML=`<div class="error-box">No data for ${esc(key)}</div>`; return; }
+
+    const out=data.output||{};
+    if(out.fired){
+      res.innerHTML=`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          ${sev(out.severity)}
+          <span style="font-family:var(--fm);font-size:18px;font-weight:700">${typeof out.score==="number"?out.score.toFixed(3):"—"}</span>
+        </div>
+        <div style="font-family:var(--fm);font-size:11px;color:var(--t2);line-height:1.7;white-space:pre-wrap;word-break:break-word;
+          max-height:240px;overflow-y:auto;margin-bottom:8px">${esc(out.explanation||"")}</div>
+        <div style="font-size:10px;color:var(--t4);font-style:italic">Pre-computed output of ${esc((out.call_signature||"").slice(0,70))}</div>`;
+    }else{
+      const dets=(out.detectors_run||[]).join(", ");
+      res.innerHTML=`
+        <div style="color:var(--re);font-family:var(--fm);font-size:13px;margin-bottom:8px">✓ No anomalies</div>
+        <div style="font-size:11px;color:var(--t2)">Detectors run: ${esc(dets)}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:8px">Detector returned None — the code ran and found nothing.</div>`;
+    }
+  };
+
+  window.closeSandbox=function(){
+    document.getElementById("sandbox-overlay").classList.remove("open");
+  };
+})(); // end sandboxScope IIFE
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", loadCommandCenter);
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "recorded_at": "2026-09-07T03:40:22.951197+00:00",
+  "runs": {
+    "pytest": {
+      "command": "python -m pytest tests/ -q",
+      "returncode": 0,
+      "duration_s": 170.36,
+      "passed": 273,
+      "failed": 0,
+      "errors": 0,
+      "raw_tail": "1%]\ntests\\test_detection_phase2.py ...................                       [ 38%]\ntests\\test_detection_phase3.py ...........................               [ 48%]\ntests\\test_ingest_phase1.py ..............................               [ 59%]\ntests\\test_ml_phase4.py .............................                    [ 69%]\ntests\\test_resilience.py .............................................   [ 86%]\ntests\\test_security_pii.py .....................................         [100%]\n\n================ 273 passed, 4 deselected in 170.36s (0:02:50) ================\nC:\\Users\\hp\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\pytest_asyncio\\plugin.py:208: PytestDeprecationWarning: The configuration option \"asyncio_default_fixture_loop_scope\" is unset.\nThe event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: \"function\", \"class\", \"module\", \"package\", \"session\"\n\n  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))\nsys:1: ResourceWarning: unclosed <socket.socket fd=2188, family=2, type=1, proto=0, laddr=('127.0.0.1', 62182), raddr=('127.0.0.1', 62181)>\nsys:1: ResourceWarning: unclosed <socket.socket fd=2072, family=2, type=1, proto=0, laddr=('127.0.0.1', 62181), raddr=('127.0.0.1', 62182)>\n"
+    },
+    "stress_ingestion": {
+      "status": "file_not_found",
+      "note": "stress/test_ingestion_volume.py not found \u2014 skipped"
+    },
+    "stress_concurrent": {
+      "status": "file_not_found",
+      "note": "stress/test_concurrent_access.py not found \u2014 skipped"
+    }
+  }
+}
