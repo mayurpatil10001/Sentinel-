@@ -81,8 +81,9 @@ def main():
                 f"exch={row['exchange']} | acct={row['account_id']}"
             )
 
-        evidence_path = f"/tmp/evidence_{alert.id}.json"
-        with open(evidence_path, "w") as f:
+        import tempfile
+        evidence_path = os.path.join(tempfile.gettempdir(), f"evidence_{alert.id}.json")
+        with open(evidence_path, "w", encoding="utf-8") as f:
             json.dump(
                 {
                     "alert_id": evidence.alert_id,
