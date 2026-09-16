@@ -1,0 +1,2157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EMSS — Equity Market Surveillance System</title>
+<meta name="description" content="Equity Market Surveillance System — Internal operational console. Sample data environment.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────────
+   CSS VARIABLES & RESET
+   ───────────────────────────────────────────────────────────────── */
+:root {
+  --bg:         #0d1117;
+  --panel:      #151b23;
+  --panel-2:    #1c2433;
+  --panel-3:    #1a2035;
+  --border:     #263040;
+  --border-hi:  #3a4a60;
+  --text:       #c9d1d9;
+  --text-dim:   #8b949e;
+  --text-muted: #545d68;
+  --text-link:  #58a6ff;
+  --crit:       #ff7b72;
+  --crit-bg:    #3d1515;
+  --high:       #e3b341;
+  --high-bg:    #2d2000;
+  --med:        #79c0ff;
+  --med-bg:     #0d1f3c;
+  --low:        #56d364;
+  --low-bg:     #0d2318;
+  --open-c:     #e3b341;
+  --inv-c:      #79c0ff;
+  --esc-c:      #c792e9;
+  --closed-c:   #545d68;
+  --sample-bg:  #0d2318;
+  --sample-txt: #4cc26a;
+  --accent:     #1f6feb;
+  --mono:       'IBM Plex Mono', Consolas, 'Courier New', monospace;
+  --sans:       'Noto Sans', 'Segoe UI', Arial, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 11.5px; font-family: var(--sans); color: var(--text); background: var(--bg); }
+body { overflow: hidden; height: 100vh; }
+a { color: var(--text-link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { cursor: pointer; font-family: var(--sans); font-size: 11px; }
+input, select, textarea { font-family: var(--sans); font-size: 11px; }
+pre, code, .mono { font-family: var(--mono); }
+details > summary { cursor: pointer; list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+
+/* ─────────────────────────────────────────────────────────────────
+   LOGIN GATE
+   ───────────────────────────────────────────────────────────────── */
+#gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+.gate-box {
+  width: 440px;
+  border: 1px solid var(--border-hi);
+  background: var(--panel);
+}
+.gate-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.gate-sysname {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: 3px;
+}
+.gate-syssub {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.gate-env-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--sample-bg);
+  color: var(--sample-txt);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  border: 1px solid #1f4a2f;
+}
+.gate-meta {
+  padding: 10px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.gate-meta-row {
+  display: flex;
+  gap: 8px;
+  padding: 2.5px 0;
+  font-size: 10.5px;
+}
+.gm-lbl { color: var(--text-muted); min-width: 100px; }
+.gm-val { color: var(--text-dim); }
+.gate-form { padding: 14px 22px 18px; }
+.gate-form label {
+  display: block;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+}
+#login-pin {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border-hi);
+  color: var(--text);
+  font-size: 11px;
+  margin-bottom: 10px;
+  outline: none;
+}
+#login-pin:focus { border-color: var(--accent); }
+#login-btn {
+  display: block;
+  width: 100%;
+  padding: 7px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+#login-btn:hover { background: #388bfd; }
+.gate-notice {
+  margin-top: 10px;
+  padding: 7px 9px;
+  background: #0d1a2e;
+  border-left: 3px solid var(--border-hi);
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   APP SHELL
+   ───────────────────────────────────────────────────────────────── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* TOP BAR */
+#topbar {
+  height: 36px;
+  background: var(--panel-3);
+  border-bottom: 1px solid var(--border-hi);
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 8px;
+  flex-shrink: 0;
+  gap: 0;
+  z-index: 200;
+}
+.tb-sysname {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  padding-right: 10px;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tb-module {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.tb-env {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.tb-env-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--sample-bg);
+  color: var(--sample-txt);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  border: 1px solid #1f4a2f;
+  white-space: nowrap;
+}
+.tb-session {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 10px;
+  border-left: 1px solid var(--border);
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+.tb-analyst, .tb-clock {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.tb-clock { color: var(--text-muted); }
+.tb-logout {
+  font-size: 10px;
+  color: var(--text-link);
+  background: none;
+  border: none;
+  padding: 0;
+  white-space: nowrap;
+}
+
+/* LAYOUT */
+#layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* SIDEBAR */
+#sidebar {
+  width: 192px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  flex-shrink: 0;
+  padding-bottom: 16px;
+}
+.sb-section { padding: 10px 0 2px; }
+.sb-section-lbl {
+  padding: 4px 10px;
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.nav-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 5px 8px 5px 12px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  gap: 6px;
+  line-height: 1.35;
+  user-select: none;
+}
+.nav-item:hover { background: var(--panel-2); color: var(--text); }
+.nav-item.active {
+  background: var(--panel-2);
+  border-left-color: var(--accent);
+  color: var(--text);
+  font-weight: 500;
+}
+.nav-key {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  min-width: 14px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+/* MAIN */
+#main {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+  position: relative;
+}
+.view { display: none; }
+.view.active { display: block; }
+
+/* ─────────────────────────────────────────────────────────────────
+   SHARED COMPONENTS
+   ───────────────────────────────────────────────────────────────── */
+
+/* Page header */
+.ph {
+  padding: 8px 14px 7px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ph-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.ph-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.ph-meta {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Filter bar */
+.fbar {
+  padding: 5px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fbar-lbl { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.fbar select, .fbar input[type=text] {
+  padding: 2px 5px;
+  background: var(--bg);
+  border: 1px solid var(--border-hi);
+  color: var(--text);
+  font-size: 10.5px;
+  font-family: var(--sans);
+  outline: none;
+  height: 22px;
+}
+.fbar select:focus, .fbar input:focus { border-color: var(--accent); }
+.fbar-btn {
+  padding: 2px 9px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 10.5px;
+  font-weight: 500;
+  height: 22px;
+}
+.fbar-btn-reset {
+  padding: 2px 9px;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-hi);
+  font-size: 10.5px;
+  height: 22px;
+}
+
+/* Data table */
+.tw { overflow-x: auto; }
+.dt {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.dt th {
+  text-align: left;
+  padding: 4px 8px;
+  background: var(--panel-2);
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 10px;
+  border-bottom: 1px solid var(--border-hi);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  letter-spacing: 0.02em;
+  cursor: default;
+}
+.dt th:last-child { border-right: none; }
+.dt td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid #1c2433;
+  vertical-align: middle;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dt td:last-child { border-right: none; }
+.dt tr:nth-child(even) td { background: var(--panel); }
+.dt tr:nth-child(odd) td { background: #0f141c; }
+.dt tr.clickable:hover td { background: var(--panel-3) !important; cursor: pointer; }
+.mc { font-family: var(--mono); font-size: 10.5px; }
+.sc { font-weight: 500; color: var(--text); }
+.dc { color: var(--text-muted); font-size: 10px; }
+.tr { text-align: right; }
+.tc { text-align: center; }
+.wn { white-space: normal; }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 9.5px;
+  font-weight: 500;
+  border-radius: 2px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  font-family: var(--mono);
+}
+.b-crit  { background: var(--crit-bg); color: var(--crit);    border: 1px solid #5a1515; }
+.b-high  { background: var(--high-bg); color: var(--high);    border: 1px solid #4a3800; }
+.b-med   { background: var(--med-bg);  color: var(--med);     border: 1px solid #0d2f60; }
+.b-low   { background: var(--low-bg);  color: var(--low);     border: 1px solid #1a4020; }
+.b-none  { background: #1a1f2a;        color: var(--text-muted); border: 1px solid var(--border); }
+.b-open  { background: #2d2000; color: var(--open-c); border: 1px solid #5a3800; }
+.b-inv   { background: #0d1f3c; color: var(--inv-c);  border: 1px solid #1a3f6a; }
+.b-esc   { background: #1e1030; color: var(--esc-c);  border: 1px solid #4a2a6a; }
+.b-clos  { background: #1a1f2a; color: var(--closed-c); border: 1px solid var(--border); }
+.b-ok    { background: var(--low-bg);  color: var(--low);    border: 1px solid #1a4020; }
+.b-co    { background: var(--crit-bg); color: var(--crit);   border: 1px solid #5a1515; }
+.b-rec   { background: var(--high-bg); color: var(--high);   border: 1px solid #4a3800; }
+.b-ni    { background: #1a1f2a; color: var(--text-muted); border: 1px solid var(--border); }
+.b-heur  { background: #1e1030; color: #c792e9; border: 1px solid #4a2a6a; }
+.b-uval  { background: var(--crit-bg); color: var(--crit);   border: 1px solid #5a1515; }
+.b-val   { background: var(--low-bg);  color: var(--low);    border: 1px solid #1a4020; }
+
+/* Pagination */
+.pgbar {
+  padding: 5px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+.pg-btn {
+  padding: 1px 9px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  font-size: 10.5px;
+  height: 21px;
+}
+.pg-btn:hover:not(:disabled) { background: var(--panel-3); color: var(--text); }
+.pg-btn:disabled { opacity: 0.3; cursor: default; }
+.pg-info { font-family: var(--mono); font-size: 10px; }
+
+/* Empty / loading / error */
+.empty { padding: 20px 14px; color: var(--text-muted); font-size: 11px; line-height: 1.7; }
+.loading { padding: 14px; color: var(--text-muted); font-size: 10.5px; font-family: var(--mono); }
+.api-err {
+  margin: 8px 14px;
+  padding: 7px 10px;
+  background: var(--crit-bg);
+  border-left: 3px solid var(--crit);
+  font-size: 10.5px;
+  color: var(--crit);
+  font-family: var(--mono);
+}
+
+/* Breadcrumb */
+.bc {
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.bc a { color: var(--text-link); font-size: 10px; }
+
+/* Case header */
+.case-head {
+  padding: 10px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border-hi);
+}
+.case-ref {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.cmg {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  border: 1px solid var(--border);
+}
+.cmc {
+  padding: 5px 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.cmc:last-child { border-right: none; }
+.cmc-l {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.cmc-v { font-size: 11px; color: var(--text); font-weight: 500; }
+
+/* Case sections */
+.csect { border-bottom: 1px solid var(--border); }
+.csect-head {
+  padding: 6px 14px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.csect-num { font-family: var(--mono); color: var(--text-muted); font-size: 10px; }
+.csect-body { padding: 10px 14px; }
+.explanation {
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: var(--text);
+  background: var(--panel);
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+}
+
+/* Workflow form */
+.wf-form {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  max-width: 520px;
+}
+.wf-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.wf-lbl {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  min-width: 88px;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+.wf-ctrl { flex: 1; }
+.wf-ctrl select,
+.wf-ctrl input[type=text],
+.wf-ctrl textarea {
+  width: 100%;
+  padding: 5px 7px;
+  background: var(--bg);
+  border: 1px solid var(--border-hi);
+  color: var(--text);
+  font-size: 11px;
+  font-family: var(--sans);
+  outline: none;
+}
+.wf-ctrl textarea {
+  height: 58px;
+  resize: vertical;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.wf-ctrl select:focus,
+.wf-ctrl input:focus,
+.wf-ctrl textarea:focus { border-color: var(--accent); }
+.wf-submit {
+  padding: 5px 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.wf-submit:hover { background: #388bfd; }
+.wf-note { margin-top: 5px; font-size: 9.5px; color: var(--text-muted); line-height: 1.5; }
+
+/* Action bar */
+.abar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  margin-bottom: 8px;
+}
+.btn-primary {
+  padding: 5px 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.btn-primary:hover { background: #388bfd; }
+.btn-danger {
+  padding: 5px 12px;
+  background: transparent;
+  color: var(--crit);
+  border: 1px solid var(--crit);
+  font-size: 11px;
+}
+.btn-danger:hover { background: var(--crit-bg); }
+
+/* SAR document preview */
+.sar-wrap { border: 1px solid var(--border-hi); background: var(--panel); }
+.sar-hdr {
+  padding: 5px 10px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sar-hdr-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+.sar-actions { margin-left: auto; display: flex; gap: 5px; }
+.sar-btn {
+  padding: 2px 7px;
+  background: transparent;
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.sar-btn:hover { background: var(--panel-2); color: var(--text); }
+.sar-doc {
+  padding: 14px 18px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.75;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 580px;
+  overflow-y: auto;
+}
+.sar-footer {
+  padding: 7px 10px;
+  border-top: 1px solid var(--border);
+  background: #0d1a10;
+  font-size: 9.5px;
+  color: #4a8a5a;
+  font-family: var(--mono);
+  white-space: pre;
+  line-height: 1.5;
+}
+
+/* KV report block */
+.kv-block { padding: 10px 14px; }
+.kv-row {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+  align-items: flex-start;
+}
+.kv-lbl { min-width: 250px; font-size: 10.5px; color: var(--text-dim); padding-right: 12px; }
+.kv-val { font-family: var(--mono); font-size: 10.5px; color: var(--text); font-weight: 500; }
+.kv-val.good { color: var(--low); }
+.kv-val.warn { color: var(--high); }
+.kv-val.bad  { color: var(--crit); }
+.kv-val.muted { color: var(--text-muted); font-family: var(--sans); font-weight: 400; white-space: normal; line-height: 1.5; }
+
+/* Log block */
+.log-block {
+  background: #080d12;
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: pre;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+  line-height: 1.55;
+}
+
+/* Notices / footnotes */
+.notice {
+  margin: 10px 14px;
+  padding: 7px 10px;
+  background: #0d1a2e;
+  border-left: 3px solid var(--border-hi);
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+.footnote {
+  padding: 8px 14px 12px;
+  font-size: 9.5px;
+  color: var(--text-muted);
+  line-height: 1.65;
+  border-top: 1px solid var(--border);
+}
+
+/* Split layout */
+.split {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  height: calc(100vh - 36px);
+  overflow: hidden;
+}
+.split-l {
+  border-right: 1px solid var(--border-hi);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.split-r {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sebi escalation section */
+.sebi-trigger {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.sebi-trigger-lbl {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.sebi-trigger-note {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+/* Section sep line */
+.sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LOGIN GATE
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-head">
+      <div class="gate-sysname">EQUITY MARKET SURVEILLANCE SYSTEM</div>
+      <div class="gate-syssub">Integrated Order &amp; Trade Surveillance Platform · Internal Use Only</div>
+      <span class="gate-env-tag">MOCK ENVIRONMENT — SAMPLE DATA ONLY</span>
+    </div>
+    <div class="gate-meta">
+      <div class="gate-meta-row"><span class="gm-lbl">Operated by:</span><span class="gm-val">Exchange Surveillance Department [SAMPLE]</span></div>
+      <div class="gate-meta-row"><span class="gm-lbl">Environment:</span><span class="gm-val">Non-Production / Synthetic Data</span></div>
+      <div class="gate-meta-row"><span class="gm-lbl">Classification:</span><span class="gm-val">Internal / Non-Public</span></div>
+      <div class="gate-meta-row"><span class="gm-lbl">System Version:</span><span class="gm-val">0.2.0-SAMPLE · Build 2026.09</span></div>
+      <div class="gate-meta-row"><span class="gm-lbl">Backend Status:</span><span class="gm-val" id="gate-api-status">Checking connectivity…</span></div>
+    </div>
+    <div class="gate-form">
+      <label for="login-pin">Analyst Access Code <span style="font-size:9.5px;color:var(--text-muted)">(any value accepted in sample environment)</span></label>
+      <input type="password" id="login-pin" placeholder="Enter access code" autocomplete="off">
+      <button id="login-btn">AUTHENTICATE</button>
+      <div class="gate-notice">
+        Access to this system is restricted to authorised surveillance personnel. All sessions
+        and evidence access events are logged and audited. This is a non-production environment —
+        all instruments, accounts, orders, and alert data are synthetic. No real market data,
+        personal information, or actual SEBI filing capability is present.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MAIN CONSOLE
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="app" hidden>
+
+  <!-- TOP BAR -->
+  <header id="topbar">
+    <div class="tb-sysname">EMSS</div>
+    <div class="tb-module" id="tb-module">Surveillance Queue</div>
+    <div class="tb-env">
+      <span class="tb-env-tag">NSE / BSE · SAMPLE DATA ENVIRONMENT</span>
+    </div>
+    <div class="tb-session">
+      <span class="tb-analyst">ANALYST-01</span>
+      <span class="tb-clock" id="tb-clock">--:--:-- IST</span>
+      <button class="tb-logout" onclick="doLogout()">LOGOUT</button>
+    </div>
+  </header>
+
+  <!-- BODY LAYOUT -->
+  <div id="layout">
+
+    <!-- SIDEBAR -->
+    <nav id="sidebar">
+      <div class="sb-section">
+        <div class="sb-section-lbl">Surveillance</div>
+        <div class="nav-item active" data-view="queue" onclick="navigate('queue')">
+          <span class="nav-key">01</span><span>Surveillance Queue</span>
+        </div>
+        <div class="nav-item" data-view="instruments" onclick="navigate('instruments')">
+          <span class="nav-key">02</span><span>Instrument Master</span>
+        </div>
+        <div class="nav-item" data-view="escalations" onclick="navigate('escalations')">
+          <span class="nav-key">03</span><span>Escalations &amp; SEBI Ref.</span>
+        </div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-section-lbl">Audit &amp; Access</div>
+        <div class="nav-item" data-view="audit" onclick="navigate('audit')">
+          <span class="nav-key">04</span><span>Evidence Audit Trail</span>
+        </div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-section-lbl">System</div>
+        <div class="nav-item" data-view="sources" onclick="navigate('sources')">
+          <span class="nav-key">05</span><span>Data Source Status</span>
+        </div>
+        <div class="nav-item" data-view="detectors" onclick="navigate('detectors')">
+          <span class="nav-key">06</span><span>Detection Engine</span>
+        </div>
+        <div class="nav-item" data-view="backtest" onclick="navigate('backtest')">
+          <span class="nav-key">07</span><span>Validation Register</span>
+        </div>
+        <div class="nav-item" data-view="health" onclick="navigate('health')">
+          <span class="nav-key">08</span><span>Engineering Health</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- CONTENT AREA -->
+    <main id="main">
+
+      <!-- ─────────────────────────────────────────────────────── -->
+      <!-- VIEW 01: SURVEILLANCE QUEUE                           -->
+      <!-- ─────────────────────────────────────────────────────── -->
+      <div id="view-queue" class="view active">
+        <div class="ph">
+          <span class="ph-title">SURVEILLANCE QUEUE</span>
+          <span class="ph-sub">Active alert queue · Order &amp; trade anomaly detection · Source: /api/alerts</span>
+          <span class="ph-meta" id="q-meta">—</span>
+        </div>
+        <div class="fbar">
+          <span class="fbar-lbl">FILTER:</span>
+          <select id="f-sev" onchange="queueFilter()">
+            <option value="">All Severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <select id="f-pat" onchange="queueFilter()">
+            <option value="">All Patterns</option>
+            <option value="spoofing_layering">Spoofing / Layering</option>
+            <option value="circular_trading">Circular Trading</option>
+            <option value="coordinated_pump">Coordinated Pump</option>
+            <option value="oi_manipulation">OI Manipulation</option>
+            <option value="basis_distortion">Basis Distortion</option>
+            <option value="option_pinning">Option Pinning</option>
+          </select>
+          <select id="f-sta" onchange="queueFilter()">
+            <option value="">All Statuses</option>
+            <option value="open">Open</option>
+            <option value="investigating">Investigating</option>
+            <option value="escalated">Escalated</option>
+            <option value="closed">Closed</option>
+          </select>
+          <button class="fbar-btn-reset" onclick="queueReset()">CLEAR FILTERS</button>
+          <span style="margin-left:auto; font-size:9.5px; color:var(--text-muted); font-family:var(--mono)">Click any row to open case detail</span>
+        </div>
+        <div class="tw">
+          <table class="dt">
+            <thead>
+              <tr>
+                <th style="width:88px">REF. NO.</th>
+                <th style="width:138px">DETECTED (IST)</th>
+                <th style="width:46px">EXCH.</th>
+                <th style="width:84px">SCRIP</th>
+                <th style="width:148px">PATTERN</th>
+                <th style="width:66px">SEVERITY</th>
+                <th style="width:54px">SCORE</th>
+                <th style="width:90px">STATUS</th>
+                <th style="width:50px">AGE</th>
+                <th>ACCOUNTS</th>
+              </tr>
+            </thead>
+            <tbody id="q-body">
+              <tr><td colspan="10" class="loading">Loading surveillance queue…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pgbar">
+          <button class="pg-btn" id="q-prev" onclick="qPg(-1)">◀ Prev</button>
+          <span class="pg-info" id="q-pginfo">—</span>
+          <button class="pg-btn" id="q-next" onclick="qPg(1)">Next ▶</button>
+          <span style="margin-left:auto;font-size:9.5px;color:var(--text-muted)">Page size: 50 · Endpoint: GET /api/alerts</span>
+        </div>
+      </div>
+
+      <!-- ─────────────────────────────────────────────────────── -->
+      <!-- VIEW 02: INSTRUMENT MASTER                            -->
+      <!-- ─────────────────────────────────────────────────────── -->
+      <div id="view-instruments" class="view">
+        <div class="ph">
+          <span class="ph-title">INSTRUMENT MASTER</span>
+          <span class="ph-sub">Tracked instruments with internal surveillance classification · Source: /api/instruments</span>
+          <span class="ph-meta" id="inst-meta">—</span>
+        </div>
+        <div class="tw">
+          <table class="dt">
+            <thead>
+              <tr>
+                <th>SCRIP / SYMBOL</th>
+                <th>EXCHANGE</th>
+                <th>TYPE</th>
+                <th>AVG DAILY VOL (30D)</th>
+                <th>AVG TURNOVER (30D)</th>
+                <th>OPEN ALERTS</th>
+                <th>LAST SEVERITY</th>
+                <th>LAST PATTERN</th>
+                <th>INTERNAL SURVEILLANCE FLAG *</th>
+              </tr>
+            </thead>
+            <tbody id="inst-body">
+              <tr><td colspan="9" class="loading">Loading instrument master…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="footnote">
+          * Surveillance flags are this system's internal severity classifications derived from anomaly detection scores.
+          They do not constitute official ASM (Additional Surveillance Measure) or GSM (Graded Surveillance Measure)
+          designations under SEBI Circular SEBI/HO/ISD/ISD_OAED/P/CIR/2022/155 or related circulars.
+          Official ASM/GSM placement is determined exclusively by the exchange's formal criteria (price-band hits, client
+          concentration ratios, close-to-close price variation, P/E thresholds). Terminology is used for vocabulary
+          consistency with analyst workflows only — not to assert regulatory classification authority.
+        </div>
+      </div>
+
+      <!-- ─────────────────────────────────────────────────────── -->
+      <!-- VIEW 03: CASE DETAIL (drilldown from queue)           -->
+      <!-- ─────────────────────────────────────────────────────── -->
+      <div id="view-case" class="view">
+        <div id="case-content">
+          <div class="loading" style="padding:20px 14px">
+            Select a case from the Surveillance Queue to view details.
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────────────────────────────────────────────────── -->
+      <!-- VIEW 04: ESCALATIONS & SEBI REFERENCE                 -->
+      <!-- ─────────────────────────────────────────────────────── -->
+      <div id="view-escalations" class="view">
+        <div class="split">
+          <div class="split-l">
+            <div class="ph">
+              <span class="ph-title">ESCALATION REGISTER</span>
+              <span class="ph-meta" id="esc-meta">—</span>
+            </div>
+            <div class="tw" style="flex:1">
+              <table class="dt">
+                <thead>
+                  <tr>
+                    <th>REF. NO.</th>
+                    <th>SCRIP</th>
+                    <th>PATTERN</th>
+                    <th>SEVERITY</th>
+                    <th>SEBI FLAG</th>
+                  </tr>
+                </thead>
+                <tbody id="esc-body">
+                  <tr><td colspan="5" class="loading">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="split-r">
+            <div class="ph">
+              <span class="ph-title">SEBI DRAFT — DOCUMENT PREVIEW</span>
+              <span class="ph-meta" id="sar-ref">—</span>
+            </div>
+            <div id="sar-area" style="flex:1;padding:0">
+              <div class="loading" style="padding:20px 14px">
+                Select a case from the escalation register to view the SEBI SAR draft.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────────────────────────────────────────────────── -->
+      <!-- VIEW 05: EVIDENCE AUDIT TRAIL                         -->
+      <!-- ─────────────────────────────────────────────────────── -->
+      <div id="view-audit" class="view">
+        <div class="ph">
+          <span class="ph-title">EVIDENCE AUDIT TRAIL</span>
+          <span class="ph-sub">Complete evidence access log · Source: /api/audit/evidence-access</span>
+          <span class="ph-meta" id="audit-meta">—</span>
+        </div>
+        <div class="tw">
+          <table class="dt">
+            <thead>
+              <tr>
+                <th style="width:88px">AUDIT REF</th>
+                <th style="width:138px">ACCESS TIMESTAMP (UTC)</th>
+                <th style="width:88px">ALERT REF</th>
+                <th style="width:100px">ACCESSED BY</th>
+                <th style="width:84px">RAW IDs USED</th>
+                <th style="width:80px">ROW COUNT</th>
+                <th>SOURCE IP</th>
+              </tr>
+            </thead>
+            <tbody id="audit-body">
+              <tr><td colspan="7" class="loading">Loading audit trail…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notice">
+          Records in this register are generated automatically each time <code>build_evidence_log()</code>
+          is called. Rows are immutable; they cannot be deleted through this interface.
+          <em>Raw IDs Used: YES</em> indicates the analyst accessed unhashed account identifiers —
+          this is a logged, privileged action per evidence access policy.
+        </div>
+      </div>
+
+      <!-- ─────────────────────────────────────────────────────── -->
+      <!-- VIEW 06: DATA SOURCE STATUS                           -->
+      <!-- ─────────────────────────────────────────────────────── -->
+      <div id="view-sources" class="view">
+        <div class="ph">
+          <span class="ph-title">DATA SOURCE &amp; CIRCUIT STATUS</span>
+          <span class="ph-sub">Real-time circuit breaker state · Source: /api/system/data-sources</span>
+          <span class="ph-meta" id="src-meta">—</span>
+        </div>
+        <div class="tw">
+          <table class="dt">
+            <thead>
+              <tr>
+                <th>SOURCE NAME</th>
+                <th>DESCRIPTION</th>
+                <th>CIRCUIT STATE</th>
+                <th style="width:88px">CONSEC. FAILURES</th>
+                <th style="width:80px">COOLDOWN (S)</th>
+                <th style="width:78px">THRESHOLD</th>
+                <th>LAST SUCCESSFUL FETCH</th>
+                <th style="width:110px">OPERATIONAL STATUS</th>
+              </tr>
+            </thead>
+            <tbody id="src-body">
+              <tr><td colspan="8" class="loading">Loading data source status…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notice" id="src-note"></div>
+      </div>
+
+      <!-- ─────────────────────────────────────────────────────── -->
+      <!-- VIEW 07: DETECTION ENGINE STATUS                      -->
+      <!-- ─────────────────────────────────────────────────────── -->
+      <div id="view-detectors" class="view">
+        <div class="ph">
+          <span class="ph-title">DETECTION ENGINE STATUS</span>
+          <span class="ph-sub">Detector registry · Threshold configuration · Validation status · Source: /api/system/detector-status</span>
+        </div>
+        <div id="det-summary" class="kv-block" style="border-bottom:1px solid var(--border)"></div>
+        <div class="tw">
+          <table class="dt">
+            <thead>
+              <tr>
+                <th style="width:120px">DETECTOR ID</th>
+                <th>DESCRIPTION</th>
+                <th style="width:190px">MODULE FILE</th>
+                <th style="width:90px">THRESHOLD LABEL</th>
+                <th style="width:60px">NEG. CTRL</th>
+                <th style="width:60px">VALIDATED</th>
+                <th>BACKTEST VERDICT</th>
+                <th style="width:100px">THRESHOLDS</th>
+              </tr>
+            </thead>
+            <tbody id="det-body">
+              <tr><td colspan="8" class="loading">Loading detection engine status…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="footnote">
+          Validation status is as reported by the automated backtest system (see Validation Register for case-level detail).
+          No detector has been validated against a confirmed manipulation case using publicly available Indian market data.
+          Threshold labels: <em>HEURISTIC</em> = informed by SEBI case review or market convention;
+          <em>UNVALIDATED GUESS</em> = working value requiring empirical calibration against real manipulation distributions.
+          Threshold values are imported directly from each detector module at runtime — they cannot drift from the running logic.
+        </div>
+      </div>
+
+      <!-- ─────────────────────────────────────────────────────── -->
+      <!-- VIEW 08: VALIDATION REGISTER                          -->
+      <!-- ─────────────────────────────────────────────────────── -->
+      <div id="view-backtest" class="view">
+        <div class="ph">
+          <span class="ph-title">VALIDATION REGISTER — BACKTEST RESULTS</span>
+          <span class="ph-sub">Case-level testability assessment · Source: /api/backtest/results</span>
+          <span class="ph-meta" id="bt-meta">—</span>
+        </div>
+        <div id="bt-summary" class="kv-block" style="border-bottom:1px solid var(--border)"></div>
+        <div class="tw">
+          <table class="dt">
+            <thead>
+              <tr>
+                <th style="width:130px">CASE ID</th>
+                <th style="width:80px">INSTRUMENT</th>
+                <th style="width:130px">PATTERN</th>
+                <th style="width:100px">RUN VERDICT</th>
+                <th>TESTABILITY REASON</th>
+                <th style="width:130px">SOURCE FILE</th>
+              </tr>
+            </thead>
+            <tbody id="bt-body">
+              <tr><td colspan="6" class="loading">Loading validation register…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="bt-sections" style="padding:10px 14px"></div>
+      </div>
+
+      <!-- ─────────────────────────────────────────────────────── -->
+      <!-- VIEW 09: ENGINEERING HEALTH                           -->
+      <!-- ─────────────────────────────────────────────────────── -->
+      <div id="view-health" class="view">
+        <div class="ph">
+          <span class="ph-title">ENGINEERING &amp; SYSTEM HEALTH</span>
+          <span class="ph-sub">Test suite execution results · Source: /api/system/engineering-health</span>
+        </div>
+        <div id="health-body" class="kv-block">
+          <div class="loading">Loading engineering health data…</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════════════
+   CONFIGURATION
+   ════════════════════════════════════════════════════════════════ */
+const API = 'http://127.0.0.1:8000';
+const PAGE_SIZE = 50;
+
+/* ════════════════════════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════════════════════════ */
+let qPage = 1;
+let qFilters = {};
+let sarCache = {};      // alertId → DraftSAROut
+
+/* ════════════════════════════════════════════════════════════════
+   FORMATTING UTILITIES
+   ════════════════════════════════════════════════════════════════ */
+
+/* ISO → DD-MMM-YYYY HH:MM:SS (UTC, labelled IST for display) */
+function fmtDT(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    const M = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const dd = String(d.getUTCDate()).padStart(2,'0');
+    const hh = String(d.getUTCHours()).padStart(2,'0');
+    const mm = String(d.getUTCMinutes()).padStart(2,'0');
+    const ss = String(d.getUTCSeconds()).padStart(2,'0');
+    return `${dd}-${M[d.getUTCMonth()]}-${d.getUTCFullYear()} ${hh}:${mm}:${ss}`;
+  } catch { return iso; }
+}
+
+/* Age string from ISO */
+function ageStr(iso) {
+  if (!iso) return '—';
+  try {
+    const diff = Date.now() - new Date(iso).getTime();
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    if (h >= 48) return `${Math.floor(h/24)}d`;
+    if (h >= 1) return `${h}h ${m}m`;
+    return `${m}m`;
+  } catch { return '—'; }
+}
+
+/* Format number Indian style */
+function fmtN(n, dec=0) {
+  if (n == null || n === '') return '—';
+  return Number(n).toLocaleString('en-IN', { maximumFractionDigits: dec });
+}
+
+/* HTML escape */
+function e(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+/* Short case reference from UUID */
+function sref(id) { return 'SRV-' + (id||'').slice(0,8).toUpperCase(); }
+
+/* Pattern display names */
+const PAT = {
+  spoofing_layering: 'Spoofing / Layering',
+  circular_trading: 'Circular Trading',
+  coordinated_pump: 'Coordinated Pump',
+  oi_manipulation: 'OI Manipulation',
+  oi_concentration: 'OI Concentration',
+  oi_iv_decoupling: 'OI-IV Decoupling',
+  basis_distortion: 'Basis Distortion',
+  option_pinning: 'Option Pinning',
+};
+const pname = p => PAT[p] || p || '—';
+
+/* ════════════════════════════════════════════════════════════════
+   BADGE BUILDERS
+   ════════════════════════════════════════════════════════════════ */
+
+function sevBadge(s) {
+  const C = {critical:'b-crit',high:'b-high',medium:'b-med',low:'b-low'};
+  return s ? `<span class="badge ${C[s]||'b-none'}">${s.toUpperCase()}</span>` : '<span class="badge b-none">—</span>';
+}
+
+function statusBadge(s) {
+  const C = {open:'b-open',investigating:'b-inv',escalated:'b-esc',closed:'b-clos'};
+  const L = {open:'OPEN',investigating:'INVESTIGATING',escalated:'ESCALATED',closed:'CLOSED'};
+  return `<span class="badge ${C[s]||'b-none'}">${L[s]||s.toUpperCase()}</span>`;
+}
+
+function circBadge(state) {
+  const C = {CLOSED:'b-ok',OPEN:'b-co',HALF_OPEN:'b-rec',NOT_INTEGRATED:'b-ni'};
+  const L = {CLOSED:'OPERATIONAL',OPEN:'CIRCUIT OPEN',HALF_OPEN:'RECOVERING',NOT_INTEGRATED:'NOT INTEGRATED'};
+  return `<span class="badge ${C[state]||'b-none'}">${L[state]||e(state)}</span>`;
+}
+
+function threshBadge(label) {
+  if (!label) return '—';
+  if (label.includes('UNVALIDATED')) return '<span class="badge b-uval">UNVALIDATED</span>';
+  if (label.includes('HEURISTIC')) return '<span class="badge b-heur">HEURISTIC</span>';
+  return `<span class="badge b-none">${e(label.slice(0,12))}</span>`;
+}
+
+function verdictBadge(v) {
+  if (!v) return '<span class="badge b-none">—</span>';
+  if (v.includes('UNTESTABLE')) return '<span class="badge b-uval">UNTESTABLE</span>';
+  if (v.includes('PARTIAL'))    return '<span class="badge b-heur">PARTIAL</span>';
+  if (v.includes('PASS'))       return '<span class="badge b-ok">PASS</span>';
+  if (v.includes('FAIL'))       return '<span class="badge b-co">FAIL</span>';
+  return `<span class="badge b-none">${e(v.slice(0,14))}</span>`;
+}
+
+function sflag(sev) {
+  if (sev==='critical') return '<span class="badge b-crit">CANDIDATE: ASM REVIEW *</span>';
+  if (sev==='high')     return '<span class="badge b-high">ENHANCED MONITORING *</span>';
+  if (sev==='medium')   return '<span class="badge b-med">ROUTINE MONITORING</span>';
+  if (sev==='low')      return '<span class="badge b-low">STANDARD</span>';
+  return '<span class="badge b-none">—</span>';
+}
+
+/* ════════════════════════════════════════════════════════════════
+   API HELPERS
+   ════════════════════════════════════════════════════════════════ */
+
+async function apiFetch(path, opts={}) {
+  const resp = await fetch(API + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(opts.headers||{}) }
+  });
+  if (!resp.ok) {
+    let detail = '';
+    try { detail = (await resp.json()).detail || ''; } catch {}
+    throw new Error(`HTTP ${resp.status}${detail ? ': ' + detail : ''}`);
+  }
+  return resp.json();
+}
+
+function errHtml(msg) {
+  return `<div class="api-err">Error: ${e(msg)}</div>`;
+}
+
+function errTD(cols, msg) {
+  return `<tr><td colspan="${cols}">${errHtml(msg)}</td></tr>`;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CLOCK
+   ════════════════════════════════════════════════════════════════ */
+function tick() {
+  const ist = new Date(Date.now() + 5.5*3600000);
+  const pad = n => String(n).padStart(2,'0');
+  const el = document.getElementById('tb-clock');
+  if (el) el.textContent = `${pad(ist.getUTCHours())}:${pad(ist.getUTCMinutes())}:${pad(ist.getUTCSeconds())} IST`;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ════════════════════════════════════════════════════════════════ */
+const MODULE_NAMES = {
+  queue: 'Surveillance Queue',
+  instruments: 'Instrument Master',
+  case: 'Case Detail',
+  escalations: 'Escalations & SEBI Reference',
+  audit: 'Evidence Audit Trail',
+  sources: 'Data Source & Circuit Status',
+  detectors: 'Detection Engine Status',
+  backtest: 'Validation Register',
+  health: 'Engineering & System Health',
+};
+
+function navigate(view, params={}) {
+  // Hide all views
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  // Deactivate all nav items
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const viewEl = document.getElementById('view-' + view);
+  if (!viewEl) return;
+  viewEl.classList.add('active');
+
+  // Sidebar: case detail keeps queue highlighted
+  const navKey = view === 'case' ? 'queue' : view;
+  const navEl = document.querySelector(`.nav-item[data-view="${navKey}"]`);
+  if (navEl) navEl.classList.add('active');
+
+  // Topbar module name
+  const tbm = document.getElementById('tb-module');
+  if (tbm) tbm.textContent = MODULE_NAMES[view] || view;
+
+  // Update hash
+  if (view === 'case' && params.id) {
+    history.pushState(null,'','#case/'+params.id);
+  } else {
+    history.pushState(null,'','#'+view);
+  }
+
+  // Load module data
+  const loaders = {
+    queue: loadQueue,
+    instruments: loadInstruments,
+    case: () => loadCase(params.id),
+    escalations: loadEscalations,
+    audit: loadAudit,
+    sources: loadSources,
+    detectors: loadDetectors,
+    backtest: loadBacktest,
+    health: loadHealth,
+  };
+  if (loaders[view]) loaders[view]();
+}
+
+window.addEventListener('popstate', () => {
+  const h = location.hash.slice(1);
+  if (h.startsWith('case/')) navigate('case', {id: h.slice(5)});
+  else if (h && MODULE_NAMES[h]) navigate(h);
+});
+
+/* ════════════════════════════════════════════════════════════════
+   01: SURVEILLANCE QUEUE
+   ════════════════════════════════════════════════════════════════ */
+async function loadQueue() {
+  const body = document.getElementById('q-body');
+  const metaEl = document.getElementById('q-meta');
+  body.innerHTML = '<tr><td colspan="10" class="loading">Loading surveillance queue…</td></tr>';
+
+  const p = new URLSearchParams({ page: qPage, page_size: PAGE_SIZE });
+  if (qFilters.severity)     p.set('severity', qFilters.severity);
+  if (qFilters.pattern_type) p.set('pattern_type', qFilters.pattern_type);
+  if (qFilters.status)       p.set('status', qFilters.status);
+
+  try {
+    const { total, page, page_size, items } = await apiFetch('/api/alerts?' + p);
+    metaEl.textContent = `${total} total records · Page ${page}`;
+
+    if (!items || !items.length) {
+      const active = Object.entries(qFilters).filter(([,v])=>v).map(([k,v])=>`${k}=${v}`).join(', ')||'none';
+      body.innerHTML = `<tr><td colspan="10" class="empty">
+        <p>No surveillance alerts match the active filter criteria.</p>
+        <p>Active filters: ${e(active)}</p>
+        <p>Total records in database: ${total}. If the database is newly initialised, run <code>python demo/run_demo.py</code> to generate sample alerts.</p>
+      </td></tr>`;
+    } else {
+      body.innerHTML = items.map(a => `
+        <tr class="clickable" onclick="navigate('case',{id:'${e(a.id)}'})" title="Open case ${e(sref(a.id))}">
+          <td class="mc">${e(sref(a.id))}</td>
+          <td class="mc">${e(fmtDT(a.window_end))}</td>
+          <td>${e(a.exchange)}</td>
+          <td class="sc">${e(a.instrument_symbol)}</td>
+          <td>${e(pname(a.pattern_type))}</td>
+          <td>${sevBadge(a.severity)}</td>
+          <td class="mc tr">${Number(a.score).toFixed(3)}</td>
+          <td>${statusBadge(a.status)}</td>
+          <td class="mc dc">${e(ageStr(a.window_end))}</td>
+          <td class="mc dc" style="font-size:10px">${e((a.accounts_involved||[]).slice(0,2).join(', '))${(a.accounts_involved||[]).length > 2 ? '…' : ''}}</td>
+        </tr>`).join('');
+    }
+
+    const start = (page-1)*page_size + 1;
+    const end   = Math.min(page*page_size, total);
+    document.getElementById('q-pginfo').textContent =
+      total > 0 ? `Records ${start}–${end} of ${total}` : '0 records';
+    document.getElementById('q-prev').disabled = page <= 1;
+    document.getElementById('q-next').disabled = end >= total;
+
+  } catch(err) {
+    body.innerHTML = errTD(10, err.message);
+    metaEl.textContent = 'Error loading data';
+  }
+}
+
+// Fix: template literal issue with conditional
+async function loadQueueFixed() {
+  const body = document.getElementById('q-body');
+  const metaEl = document.getElementById('q-meta');
+  body.innerHTML = '<tr><td colspan="10" class="loading">Loading surveillance queue…</td></tr>';
+
+  const p = new URLSearchParams({ page: qPage, page_size: PAGE_SIZE });
+  if (qFilters.severity)     p.set('severity', qFilters.severity);
+  if (qFilters.pattern_type) p.set('pattern_type', qFilters.pattern_type);
+  if (qFilters.status)       p.set('status', qFilters.status);
+
+  try {
+    const { total, page, page_size, items } = await apiFetch('/api/alerts?' + p);
+    metaEl.textContent = `${total} total records · Page ${page}`;
+
+    if (!items || !items.length) {
+      const active = Object.entries(qFilters).filter(([,v])=>v).map(([k,v])=>`${k}=${v}`).join(', ') || 'none';
+      body.innerHTML = `<tr><td colspan="10" class="empty">
+        <p>No surveillance alerts match the active filter criteria.</p>
+        <p>Active filters: ${e(active)}</p>
+        <p>Total records in database: ${total}. If newly initialised, run demo/run_demo.py to generate sample alerts.</p>
+      </td></tr>`;
+    } else {
+      let rows = '';
+      for (const a of items) {
+        const accts = (a.accounts_involved || []);
+        const acctDisplay = accts.slice(0,2).join(', ') + (accts.length > 2 ? '…' : '');
+        rows += `<tr class="clickable" onclick="navigate('case',{id:'${e(a.id)}'})" title="Open ${e(sref(a.id))}">
+          <td class="mc">${e(sref(a.id))}</td>
+          <td class="mc">${e(fmtDT(a.window_end))}</td>
+          <td>${e(a.exchange)}</td>
+          <td class="sc">${e(a.instrument_symbol)}</td>
+          <td>${e(pname(a.pattern_type))}</td>
+          <td>${sevBadge(a.severity)}</td>
+          <td class="mc tr">${Number(a.score).toFixed(3)}</td>
+          <td>${statusBadge(a.status)}</td>
+          <td class="mc dc">${e(ageStr(a.window_end))}</td>
+          <td class="mc dc" style="font-size:10px">${e(acctDisplay)}</td>
+        </tr>`;
+      }
+      body.innerHTML = rows;
+    }
+
+    const start = (page-1)*page_size + 1;
+    const end   = Math.min(page*page_size, total);
+    document.getElementById('q-pginfo').textContent =
+      total > 0 ? `Records ${start}–${end} of ${total}` : '0 records';
+    document.getElementById('q-prev').disabled = page <= 1;
+    document.getElementById('q-next').disabled = end >= total;
+
+  } catch(err) {
+    body.innerHTML = errTD(10, err.message);
+    metaEl.textContent = 'Error loading data';
+  }
+}
+
+// Override broken loadQueue with fixed version
+loadQueue = loadQueueFixed;
+
+function queueFilter() {
+  qPage = 1;
+  qFilters = {
+    severity:     document.getElementById('f-sev').value,
+    pattern_type: document.getElementById('f-pat').value,
+    status:       document.getElementById('f-sta').value,
+  };
+  loadQueue();
+}
+
+function queueReset() {
+  qPage = 1;
+  qFilters = {};
+  document.getElementById('f-sev').value = '';
+  document.getElementById('f-pat').value = '';
+  document.getElementById('f-sta').value = '';
+  loadQueue();
+}
+
+function qPg(dir) {
+  qPage = Math.max(1, qPage + dir);
+  loadQueue();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   02: INSTRUMENT MASTER
+   ════════════════════════════════════════════════════════════════ */
+async function loadInstruments() {
+  const body = document.getElementById('inst-body');
+  const meta = document.getElementById('inst-meta');
+  body.innerHTML = '<tr><td colspan="9" class="loading">Loading instrument master…</td></tr>';
+  try {
+    const items = await apiFetch('/api/instruments');
+    meta.textContent = items.length + ' instruments';
+    if (!items.length) {
+      body.innerHTML = '<tr><td colspan="9" class="empty"><p>No instruments in database. Run the detection pipeline to populate.</p></td></tr>';
+      return;
+    }
+    let rows = '';
+    for (const inst of items) {
+      rows += `<tr>
+        <td class="sc">${e(inst.symbol)}</td>
+        <td>${e(inst.exchange)}</td>
+        <td>${e(inst.instrument_type)}</td>
+        <td class="mc tr">${fmtN(inst.avg_daily_volume_30d)}</td>
+        <td class="mc tr">&#8377; ${fmtN(inst.avg_daily_turnover_30d)}</td>
+        <td class="mc tc">${inst.open_alert_count || 0}</td>
+        <td>${sevBadge(inst.last_alert_severity)}</td>
+        <td>${inst.last_alert_pattern ? e(pname(inst.last_alert_pattern)) : '<span class="dc">—</span>'}</td>
+        <td>${sflag(inst.last_alert_severity)}</td>
+      </tr>`;
+    }
+    body.innerHTML = rows;
+  } catch(err) {
+    body.innerHTML = errTD(9, err.message);
+    meta.textContent = 'Error';
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   03: CASE DETAIL
+   ════════════════════════════════════════════════════════════════ */
+async function loadCase(alertId) {
+  const container = document.getElementById('case-content');
+  if (!alertId) {
+    container.innerHTML = '<div class="loading" style="padding:20px 14px">No case selected. Return to Surveillance Queue and select a row.</div>';
+    return;
+  }
+  container.innerHTML = '<div class="loading" style="padding:14px">Loading case detail…</div>';
+  try {
+    const [alert, evLog] = await Promise.all([
+      apiFetch('/api/alerts/' + alertId),
+      apiFetch('/alerts/' + alertId + '/evidence-log').catch(() => null)
+    ]);
+    renderCase(container, alert, evLog);
+  } catch(err) {
+    container.innerHTML = errHtml(err.message);
+  }
+}
+
+function renderCase(container, alert, evLog) {
+  const ref = sref(alert.id);
+  const transitions = {open:['investigating','closed'],investigating:['escalated','closed'],escalated:['closed'],closed:[]};
+  const next = transitions[alert.status] || [];
+  const labels = {investigating:'Mark Under Investigation',escalated:'Escalate to SEBI Reference',closed:'Close Case'};
+  const opts = next.map(s => `<option value="${s}">${labels[s]||s}</option>`).join('');
+  const canSebi = ['open','investigating'].includes(alert.status);
+
+  let evTable = '';
+  if (evLog && evLog.rows && evLog.rows.length > 0) {
+    let trows = '';
+    for (const r of evLog.rows) {
+      trows += `<tr>
+        <td class="mc">${e(fmtDT(r.timestamp))}</td>
+        <td>${e((r.side||'').toUpperCase())}</td>
+        <td>${e((r.status||'').toUpperCase())}</td>
+        <td class="mc tr">${fmtN(r.quantity)}</td>
+        <td class="mc tr">${fmtN(r.filled_quantity)}</td>
+        <td class="mc tr">${Number(r.price||0).toFixed(2)}</td>
+        <td>${e(r.exchange)}</td>
+        <td class="mc dc">${e(r.account_id)}</td>
+        <td class="mc dc" style="font-size:9.5px">${e(r.exchange_order_id)}</td>
+      </tr>`;
+    }
+    const disc = evLog.disclaimer ? ` · ${evLog.disclaimer.slice(0,90)}…` : '';
+    evTable = `
+      <div class="tw">
+        <table class="dt">
+          <thead><tr>
+            <th>TIMESTAMP (UTC)</th><th>SIDE</th><th>STATUS</th>
+            <th style="width:78px">QTY</th><th style="width:78px">FILLED</th>
+            <th style="width:76px">PRICE</th><th>EXCH.</th>
+            <th>ACCOUNT</th><th>ORDER ID</th>
+          </tr></thead>
+          <tbody>${trows}</tbody>
+        </table>
+      </div>
+      <div style="padding:5px 14px;font-size:9.5px;color:var(--text-muted)">
+        ${evLog.rows.length} order events${e(disc)}
+      </div>`;
+  } else {
+    evTable = '<div class="empty"><p>Evidence log not available or empty for this case.</p><p>The evidence log is generated by the detection pipeline at alert creation time; it may be unavailable for cases loaded directly from the API without a prior detection run.</p></div>';
+  }
+
+  const wfBlock = next.length > 0 ? `
+    <div class="wf-form">
+      <div class="wf-row">
+        <span class="wf-lbl">Current Status</span>
+        <div class="wf-ctrl">${statusBadge(alert.status)}</div>
+      </div>
+      <div class="wf-row">
+        <span class="wf-lbl">New Status</span>
+        <div class="wf-ctrl">
+          <select id="wf-new-status">
+            <option value="">— Select action —</option>
+            ${opts}
+          </select>
+        </div>
+      </div>
+      <div class="wf-row">
+        <span class="wf-lbl">Reason <span style="color:var(--crit)">*</span></span>
+        <div class="wf-ctrl">
+          <textarea id="wf-reason" placeholder="Required (min. 20 characters): document the reason for this status change. This is recorded against the case." minlength="20" required></textarea>
+        </div>
+      </div>
+      <div class="wf-row">
+        <span class="wf-lbl">Analyst ID</span>
+        <div class="wf-ctrl">
+          <input type="text" value="ANALYST-01" readonly style="color:var(--text-muted);cursor:default">
+        </div>
+      </div>
+      <div class="wf-row">
+        <span class="wf-lbl"></span>
+        <div class="wf-ctrl">
+          <button class="wf-submit" onclick="submitStatus('${e(alert.id)}')">SUBMIT STATUS CHANGE</button>
+          <div class="wf-note">* Reason field is mandatory. All status changes are recorded in the audit trail. Endpoint: PATCH /api/alerts/{id}/status</div>
+        </div>
+      </div>
+      <div id="wf-msg"></div>
+    </div>` : `<div class="empty"><p>No further transitions available. Case is ${alert.status.toUpperCase()}.</p></div>`;
+
+  const sebiBlock = canSebi ? `
+    <div class="sebi-trigger">
+      <div class="sebi-trigger-lbl">SEBI ESCALATION</div>
+      <div class="sebi-trigger-note">
+        Generates a draft Suspicious Activity Report (SAR) per SEBI ISD guidelines, including PFUTP regulation citations
+        and detection methodology disclosure. This action will transition the case status to ESCALATED.
+        The SAR is for analyst review only — it does not auto-file with SEBI.
+      </div>
+      <button class="btn-primary" onclick="escalateSebi('${e(alert.id)}')">GENERATE SEBI DRAFT SAR &amp; ESCALATE</button>
+      <div id="sebi-msg" style="margin-top:8px"></div>
+    </div>` : '';
+
+  const accts = (alert.accounts_involved || []).join(', ') || '—';
+
+  container.innerHTML = `
+    <div class="bc">
+      <a href="#" onclick="navigate('queue');return false">SURVEILLANCE QUEUE</a>
+      <span>›</span><span>CASE DETAIL</span>
+      <span>›</span><span class="mc">${e(ref)}</span>
+    </div>
+    <div class="case-head">
+      <div class="case-ref">${e(ref)}</div>
+      <div class="cmg">
+        <div class="cmc"><div class="cmc-l">Detected</div><div class="cmc-v mc" style="font-size:10px">${e(fmtDT(alert.window_end))}</div></div>
+        <div class="cmc"><div class="cmc-l">Exchange</div><div class="cmc-v">${e(alert.exchange)}</div></div>
+        <div class="cmc"><div class="cmc-l">Scrip</div><div class="cmc-v">${e(alert.instrument_symbol)}</div></div>
+        <div class="cmc"><div class="cmc-l">Pattern</div><div class="cmc-v">${e(pname(alert.pattern_type))}</div></div>
+        <div class="cmc"><div class="cmc-l">Severity</div><div class="cmc-v">${sevBadge(alert.severity)}</div></div>
+        <div class="cmc"><div class="cmc-l">Anomaly Score</div><div class="cmc-v mc">${Number(alert.score).toFixed(3)}</div></div>
+        <div class="cmc"><div class="cmc-l">Status</div><div class="cmc-v">${statusBadge(alert.status)}</div></div>
+        <div class="cmc"><div class="cmc-l">Escalated to SEBI</div><div class="cmc-v">${alert.escalated_to_sebi?'<span style="color:var(--esc-c)">Yes</span>':'<span style="color:var(--text-muted)">No</span>'}</div></div>
+        <div class="cmc"><div class="cmc-l">Detection Window</div><div class="cmc-v mc" style="font-size:9.5px">${e(fmtDT(alert.window_start))} → ${e(fmtDT(alert.window_end))}</div></div>
+        <div class="cmc"><div class="cmc-l">Accounts Involved</div><div class="cmc-v mc" style="font-size:10px">${e(accts)}</div></div>
+        <div class="cmc"><div class="cmc-l">Assigned Analyst</div><div class="cmc-v mc">ANALYST-01</div></div>
+        <div class="cmc"><div class="cmc-l">Alert UUID</div><div class="cmc-v mc" style="font-size:9px">${e(alert.id)}</div></div>
+      </div>
+    </div>
+
+    <div class="csect">
+      <div class="csect-head"><span class="csect-num">§1</span>DETECTION SUMMARY</div>
+      <div class="csect-body">
+        <div class="explanation">${e(alert.explanation)}</div>
+      </div>
+    </div>
+
+    <div class="csect">
+      <div class="csect-head"><span class="csect-num">§2</span>ORDER-LEVEL EVIDENCE REGISTER</div>
+      ${evTable}
+    </div>
+
+    <div class="csect">
+      <div class="csect-head"><span class="csect-num">§3</span>STATUS &amp; WORKFLOW ACTIONS</div>
+      <div class="csect-body">
+        ${wfBlock}
+        ${sebiBlock}
+      </div>
+    </div>
+  `;
+}
+
+async function submitStatus(alertId) {
+  const ns = document.getElementById('wf-new-status').value;
+  const reason = document.getElementById('wf-reason').value.trim();
+  const msg = document.getElementById('wf-msg');
+  if (!ns) { msg.innerHTML = errHtml('Select a new status before submitting.'); return; }
+  if (reason.length < 20) {
+    msg.innerHTML = errHtml('Reason must be at least 20 characters. Regulatory workflow requires documented justification.');
+    return;
+  }
+  msg.innerHTML = '<div class="loading">Submitting status change…</div>';
+  try {
+    await apiFetch('/api/alerts/' + alertId + '/status', {
+      method: 'PATCH',
+      body: JSON.stringify({ new_status: ns, notes: '[ANALYST-01] ' + reason })
+    });
+    msg.innerHTML = `<div style="color:var(--low);font-size:10.5px;font-family:var(--mono);padding:4px 0">
+      Status updated to ${ns.toUpperCase()}. Reloading…</div>`;
+    setTimeout(() => loadCase(alertId), 1200);
+  } catch(err) {
+    msg.innerHTML = errHtml(err.message);
+  }
+}
+
+async function escalateSebi(alertId) {
+  const msg = document.getElementById('sebi-msg');
+  msg.innerHTML = '<div class="loading">Generating SEBI draft SAR…</div>';
+  try {
+    const sar = await apiFetch('/api/alerts/' + alertId + '/escalate-to-sebi', { method: 'POST' });
+    sarCache[alertId] = sar;
+    msg.innerHTML = `<div style="color:var(--low);font-size:10.5px;font-family:var(--mono);padding:4px 0">
+      SAR generated: ${e(sar.case_reference)}. Navigating to Escalations &amp; SEBI Reference…</div>`;
+    setTimeout(() => {
+      navigate('escalations');
+      setTimeout(() => loadSARForCase(alertId, sar), 400);
+    }, 1500);
+  } catch(err) {
+    msg.innerHTML = errHtml(err.message);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   04: ESCALATIONS & SEBI REFERENCE
+   ════════════════════════════════════════════════════════════════ */
+async function loadEscalations() {
+  const body = document.getElementById('esc-body');
+  const meta = document.getElementById('esc-meta');
+  body.innerHTML = '<tr><td colspan="5" class="loading">Loading escalation register…</td></tr>';
+  try {
+    const data = await apiFetch('/api/alerts?status=escalated&page=1&page_size=100');
+    const items = data.items || [];
+    meta.textContent = items.length + ' escalated cases';
+    if (!items.length) {
+      body.innerHTML = `<tr><td colspan="5" class="empty">
+        <p>No escalated cases in register.</p>
+        <p>Escalate a case from Case Detail to populate this register. Endpoint: POST /api/alerts/{id}/escalate-to-sebi</p>
+      </td></tr>`;
+      return;
+    }
+    let rows = '';
+    for (const a of items) {
+      rows += `<tr class="clickable" onclick="loadSARForCase('${e(a.id)}')">
+        <td class="mc">${e(sref(a.id))}</td>
+        <td class="sc">${e(a.instrument_symbol)}</td>
+        <td>${e(pname(a.pattern_type))}</td>
+        <td>${sevBadge(a.severity)}</td>
+        <td class="mc dc">${a.escalated_to_sebi ? 'Filed' : 'Pending'}</td>
+      </tr>`;
+    }
+    body.innerHTML = rows;
+  } catch(err) {
+    body.innerHTML = errTD(5, err.message);
+    meta.textContent = 'Error';
+  }
+}
+
+async function loadSARForCase(alertId, cached) {
+  const area = document.getElementById('sar-area');
+  const refEl = document.getElementById('sar-ref');
+  area.innerHTML = '<div class="loading" style="padding:14px">Loading SAR draft…</div>';
+  try {
+    const sar = cached || sarCache[alertId] || await apiFetch('/api/alerts/' + alertId + '/escalate-to-sebi', { method: 'POST' });
+    sarCache[alertId] = sar;
+    refEl.textContent = sar.case_reference;
+
+    const docId = 'sar-doc-' + alertId.replace(/-/g,'_');
+    area.innerHTML = `
+      <div class="sar-wrap" style="margin:0;border:0;border-top:1px solid var(--border)">
+        <div class="sar-hdr">
+          <span class="sar-hdr-title">DRAFT SAR — ${e(sar.case_reference)}</span>
+          <div class="sar-actions">
+            <button class="sar-btn" onclick="copySAR('${docId}')">COPY FULL TEXT</button>
+            <button class="sar-btn" onclick="printSAR('${docId}')">PRINT VIEW</button>
+          </div>
+        </div>
+        <div class="sar-doc" id="${docId}">${e(sar.text_document || '[No document text generated]')}</div>
+        <div class="sar-footer">DRAFT — DO NOT FILE WITHOUT ANALYST REVIEW AND VERIFICATION OF FACTUAL ACCURACY
+Generated: ${e(fmtDT(sar.generated_at))} UTC · Alert: ${e(sref(alertId))}
+File through SEBI SCORES portal or designated exchange channel after analyst review.
+SAMPLE DATA ENVIRONMENT — this document is not a real regulatory filing.</div>
+      </div>`;
+  } catch(err) {
+    area.innerHTML = errHtml(err.message);
+    refEl.textContent = '—';
+  }
+}
+
+function copySAR(docId) {
+  const el = document.getElementById(docId);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent)
+    .then(() => alert('SAR text copied to clipboard.'))
+    .catch(() => alert('Copy failed — use browser Ctrl+A, Ctrl+C on the document.'));
+}
+
+function printSAR(docId) {
+  const el = document.getElementById(docId);
+  if (!el) return;
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>SEBI SAR Draft</title>
+    <style>body{font-family:Consolas,monospace;font-size:10.5pt;white-space:pre-wrap;padding:24pt;line-height:1.7;color:#000;background:#fff}</style>
+    </head><body>${el.textContent}</body></html>`);
+  w.document.close();
+  w.print();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   05: EVIDENCE AUDIT TRAIL
+   ════════════════════════════════════════════════════════════════ */
+async function loadAudit() {
+  const body = document.getElementById('audit-body');
+  const meta = document.getElementById('audit-meta');
+  body.innerHTML = '<tr><td colspan="7" class="loading">Loading audit trail…</td></tr>';
+  try {
+    const { total, items } = await apiFetch('/api/audit/evidence-access?page=1&page_size=100');
+    meta.textContent = total + ' access events';
+    if (!items || !items.length) {
+      body.innerHTML = `<tr><td colspan="7" class="empty">
+        <p>No evidence access events recorded.</p>
+        <p>Events are created automatically each time build_evidence_log() is called during a detection run.</p>
+      </td></tr>`;
+      return;
+    }
+    let rows = '';
+    for (const r of items) {
+      rows += `<tr>
+        <td class="mc dc" style="font-size:9.5px">${e(r.id.slice(0,12))}…</td>
+        <td class="mc">${e(fmtDT(r.accessed_at))}</td>
+        <td class="mc">${e(sref(r.alert_id))}</td>
+        <td class="mc">${e(r.accessed_by)}</td>
+        <td class="tc">${r.used_raw_ids ? '<span class="badge b-high">YES</span>' : '<span class="badge b-none">NO</span>'}</td>
+        <td class="mc tr">${r.evidence_row_count}</td>
+        <td class="mc dc">${e(r.source_ip)||'—'}</td>
+      </tr>`;
+    }
+    body.innerHTML = rows;
+  } catch(err) {
+    body.innerHTML = errTD(7, err.message);
+    meta.textContent = 'Error';
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   06: DATA SOURCE STATUS
+   ════════════════════════════════════════════════════════════════ */
+async function loadSources() {
+  const body = document.getElementById('src-body');
+  const meta = document.getElementById('src-meta');
+  const note = document.getElementById('src-note');
+  body.innerHTML = '<tr><td colspan="8" class="loading">Loading data source status…</td></tr>';
+  try {
+    const data = await apiFetch('/api/system/data-sources');
+    const sources = data.sources || [];
+    meta.textContent = `${sources.length} sources · Overall: ${data.overall_health === 'ok' ? 'OPERATIONAL' : 'DEGRADED'}`;
+    let rows = '';
+    for (const s of sources) {
+      const lastFetch = s.last_successful_fetch
+        ? new Date(s.last_successful_fetch * 1000).toISOString().replace('T',' ').slice(0,19) + ' UTC'
+        : '—';
+      rows += `<tr>
+        <td class="sc">${e(s.source)}</td>
+        <td style="white-space:normal;max-width:220px;line-height:1.4">${e(s.description)}</td>
+        <td class="mc">${e(s.circuit_state)}</td>
+        <td class="mc tr">${s.consecutive_failures!=null?s.consecutive_failures:'—'}</td>
+        <td class="mc tr">${s.cooldown_seconds!=null?s.cooldown_seconds+'s':'—'}</td>
+        <td class="mc tr">${s.failure_threshold!=null?s.failure_threshold:'—'}</td>
+        <td class="mc dc">${e(lastFetch)}</td>
+        <td>${circBadge(s.circuit_state)}</td>
+      </tr>`;
+    }
+    body.innerHTML = rows;
+    if (data.note) note.textContent = data.note;
+  } catch(err) {
+    body.innerHTML = errTD(8, err.message);
+    meta.textContent = 'Error';
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   07: DETECTION ENGINE STATUS
+   ════════════════════════════════════════════════════════════════ */
+async function loadDetectors() {
+  const body = document.getElementById('det-body');
+  const summ = document.getElementById('det-summary');
+  body.innerHTML = '<tr><td colspan="8" class="loading">Loading detection engine status…</td></tr>';
+  try {
+    const data = await apiFetch('/api/system/detector-status');
+    const { total_detectors, validated_against_real_manipulation, negative_control_tested, honest_summary, detectors } = data;
+
+    summ.innerHTML = `
+      <div class="kv-row"><span class="kv-lbl">Total Detectors Registered</span><span class="kv-val">${total_detectors}</span></div>
+      <div class="kv-row"><span class="kv-lbl">Validated Against Confirmed Manipulation</span>
+        <span class="kv-val ${validated_against_real_manipulation > 0 ? 'good' : 'warn'}">${validated_against_real_manipulation} of ${total_detectors}</span></div>
+      <div class="kv-row"><span class="kv-lbl">Negative Control Tested (0% FP on real NSE data)</span>
+        <span class="kv-val">${negative_control_tested} of ${total_detectors}</span></div>
+      <div class="kv-row"><span class="kv-lbl">System Assessment</span>
+        <span class="kv-val muted">${e(honest_summary)}</span></div>`;
+
+    let rows = '';
+    for (const d of detectors) {
+      const threshStr = Object.entries(d.thresholds||{}).map(([k,v])=>`${k}: ${v}`).join(' · ');
+      rows += `<tr>
+        <td class="mc sc">${e(d.id)}</td>
+        <td style="white-space:normal;line-height:1.45;max-width:180px">${e(d.description)}</td>
+        <td class="mc dc" style="font-size:9.5px">${e(d.file)}</td>
+        <td>${threshBadge(d.threshold_labels)}</td>
+        <td class="tc">${d.negative_control_tested ? '<span class="badge b-ok">YES</span>' : '<span class="badge b-none">NO</span>'}</td>
+        <td class="tc">${d.validated_against_real_manipulation ? '<span class="badge b-val">YES</span>' : '<span class="badge b-uval">NO</span>'}</td>
+        <td style="font-size:10px;color:var(--text-muted);white-space:normal;line-height:1.45;max-width:240px">${e(d.backtest_verdict)}</td>
+        <td>
+          <details>
+            <summary style="color:var(--text-link);font-size:10px">View (${Object.keys(d.thresholds||{}).length})</summary>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-top:4px;white-space:normal;line-height:1.6">${e(threshStr)}</div>
+          </details>
+        </td>
+      </tr>`;
+    }
+    body.innerHTML = rows;
+  } catch(err) {
+    body.innerHTML = errTD(8, err.message);
+    summ.innerHTML = errHtml(err.message);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   08: VALIDATION REGISTER
+   ════════════════════════════════════════════════════════════════ */
+async function loadBacktest() {
+  const body = document.getElementById('bt-body');
+  const summ = document.getElementById('bt-summary');
+  const meta = document.getElementById('bt-meta');
+  const sect = document.getElementById('bt-sections');
+  body.innerHTML = '<tr><td colspan="6" class="loading">Loading validation register…</td></tr>';
+  try {
+    const data = await apiFetch('/api/backtest/results');
+    const { summary, case_results, negative_controls, report_sections } = data;
+    meta.textContent = `${summary.total_cases} cases assessed`;
+
+    const nc = negative_controls || {};
+    summ.innerHTML = `
+      <div class="kv-row"><span class="kv-lbl">Total SEBI Cases Assessed</span><span class="kv-val">${summary.total_cases}</span></div>
+      <div class="kv-row"><span class="kv-lbl">Untestable (insufficient public data)</span><span class="kv-val warn">${summary.untestable}</span></div>
+      <div class="kv-row"><span class="kv-lbl">Partially Testable</span><span class="kv-val">${summary.partially_testable}</span></div>
+      <div class="kv-row"><span class="kv-lbl">Fully Testable</span><span class="kv-val">${summary.testable}</span></div>
+      ${nc.days_tested!=null ? `<div class="kv-row"><span class="kv-lbl">Negative Control — Trading Days Tested</span><span class="kv-val">${nc.days_tested}</span></div>` : ''}
+      ${nc.false_positive_rate!=null ? `<div class="kv-row"><span class="kv-lbl">Negative Control — Observed FP Rate</span><span class="kv-val good">${(Number(nc.false_positive_rate)*100).toFixed(1)}%</span></div>` : ''}`;
+
+    if (case_results && case_results.length > 0) {
+      let rows = '';
+      for (const r of case_results) {
+        const cid = r.case_id || r._source_file || '—';
+        const sym = r.symbol || r.instrument || '—';
+        const pat = r.pattern || r.detector || '—';
+        const vdict = r.run_verdict || r.verdict || '—';
+        const reason = (r.testability_reason || r.reason || r.notes || '—').slice(0,200);
+        rows += `<tr>
+          <td class="mc dc" style="font-size:10px">${e(cid)}</td>
+          <td class="sc">${e(sym)}</td>
+          <td>${e(pname(pat))}</td>
+          <td>${verdictBadge(vdict)}</td>
+          <td style="font-size:10px;color:var(--text-muted);white-space:normal;line-height:1.5;max-width:300px">${e(reason)}</td>
+          <td class="mc dc" style="font-size:9.5px">${e(r._source_file||'—')}</td>
+        </tr>`;
+      }
+      body.innerHTML = rows;
+    } else {
+      body.innerHTML = '<tr><td colspan="6" class="empty"><p>No case results found. Run the backtest suite to populate: <code>python -m pytest backtest/</code></p></td></tr>';
+    }
+
+    if (report_sections && Object.keys(report_sections).length > 0) {
+      const relevant = Object.entries(report_sections).filter(([k]) => !k.startsWith('_')).slice(0,5);
+      sect.innerHTML = relevant.map(([title, text]) => `
+        <div style="margin-bottom:14px">
+          <div style="font-size:10.5px;font-weight:600;color:var(--text-dim);margin-bottom:4px;border-bottom:1px solid var(--border);padding-bottom:3px">${e(title)}</div>
+          <div style="font-size:10.5px;color:var(--text-muted);white-space:pre-wrap;line-height:1.7">${e(text.slice(0,1200))}</div>
+        </div>`).join('');
+    }
+  } catch(err) {
+    body.innerHTML = errTD(6, err.message);
+    meta.textContent = 'Error';
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   09: ENGINEERING HEALTH
+   ════════════════════════════════════════════════════════════════ */
+async function loadHealth() {
+  const body = document.getElementById('health-body');
+  body.innerHTML = '<div class="loading">Loading engineering health data…</div>';
+  try {
+    const data = await apiFetch('/api/system/engineering-health');
+    if (data.status === 'no_test_run_recorded') {
+      body.innerHTML = `
+        <div class="api-err" style="margin-bottom:8px">${e(data.message)}</div>
+        <div class="kv-row"><span class="kv-lbl">Status</span><span class="kv-val warn">No test run recorded</span></div>
+        <div class="kv-row"><span class="kv-lbl">Action Required</span><span class="kv-val muted">Run: python dashboard/scripts/run_and_save_health.py</span></div>`;
+      return;
+    }
+
+    const py   = data.runs && data.runs.pytest;
+    const stI  = data.runs && data.runs.stress_ingestion;
+    const stC  = data.runs && data.runs.stress_concurrent;
+    const sc   = rc => rc === 0 ? 'good' : rc == null ? 'muted' : 'bad';
+    const sl   = rc => rc === 0 ? 'PASS' : rc == null ? 'N/A' : `FAIL (rc=${rc})`;
+
+    let html = `<div class="kv-row"><span class="kv-lbl">Test Run Recorded At</span><span class="kv-val mc">${e(fmtDT(data.recorded_at))}</span></div>`;
+
+    if (py) {
+      html += `
+        <div class="kv-row"><span class="kv-lbl">Test Suite — Command</span><span class="kv-val mc">${e(py.command)}</span></div>
+        <div class="kv-row"><span class="kv-lbl">Test Suite — Result</span><span class="kv-val ${sc(py.returncode)}">${sl(py.returncode)}</span></div>
+        <div class="kv-row"><span class="kv-lbl">Test Suite — Tests Passed</span><span class="kv-val good">${py.passed!=null?py.passed:'—'}</span></div>
+        <div class="kv-row"><span class="kv-lbl">Test Suite — Tests Failed</span><span class="kv-val ${py.failed>0?'bad':'good'}">${py.failed!=null?py.failed:'—'}</span></div>
+        <div class="kv-row"><span class="kv-lbl">Test Suite — Duration</span><span class="kv-val mc">${py.duration_s!=null?py.duration_s+'s':'—'}</span></div>`;
+    }
+
+    if (stI) {
+      const ni = stI.status === 'file_not_found';
+      html += `<div class="kv-row"><span class="kv-lbl">Stress — Ingestion Volume</span>
+        <span class="kv-val ${ni?'muted':sc(stI.returncode)}">${ni?'NOT PRESENT — '+e(stI.note||''):sl(stI.returncode)}</span></div>`;
+    }
+    if (stC) {
+      const ni = stC.status === 'file_not_found';
+      html += `<div class="kv-row"><span class="kv-lbl">Stress — Concurrent Access</span>
+        <span class="kv-val ${ni?'muted':sc(stC.returncode)}">${ni?'NOT PRESENT — '+e(stC.note||''):sl(stC.returncode)}</span></div>`;
+    }
+
+    if (py && py.raw_tail) {
+      html += `<div class="kv-row" style="align-items:flex-start">
+        <span class="kv-lbl" style="padding-top:4px">Test Output (tail)</span>
+        <div style="flex:1"><div class="log-block">${e(py.raw_tail)}</div></div>
+      </div>`;
+    }
+
+    html += `<div style="padding:10px 0 4px;border-top:1px solid var(--border);margin-top:8px;font-size:9.5px;color:var(--text-muted);line-height:1.65">
+      Health data is generated by <code>dashboard/scripts/run_and_save_health.py</code>. Re-run after any test suite changes.
+      Numbers are read verbatim from the persisted JSON file — not computed on-demand.
+      Source: GET /api/system/engineering-health
+    </div>`;
+
+    body.innerHTML = html;
+  } catch(err) {
+    body.innerHTML = errHtml(err.message);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   LOGIN / LOGOUT
+   ════════════════════════════════════════════════════════════════ */
+function doLogin() {
+  const pin = document.getElementById('login-pin').value;
+  if (!pin.trim()) {
+    document.getElementById('login-pin').style.borderColor = 'var(--crit)';
+    return;
+  }
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').removeAttribute('hidden');
+  setInterval(tick, 1000);
+  tick();
+  navigate('queue');
+}
+
+function doLogout() {
+  document.getElementById('app').setAttribute('hidden', '');
+  document.getElementById('gate').style.display = 'flex';
+  document.getElementById('login-pin').value = '';
+}
+
+/* ════════════════════════════════════════════════════════════════
+   API CONNECTIVITY CHECK (LOGIN SCREEN)
+   ════════════════════════════════════════════════════════════════ */
+async function checkAPI() {
+  const el = document.getElementById('gate-api-status');
+  try {
+    const r = await fetch(API + '/health', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      el.textContent = 'Online · ' + API;
+      el.style.color = 'var(--sample-txt)';
+    } else {
+      el.textContent = `HTTP ${r.status}`;
+      el.style.color = 'var(--crit)';
+    }
+  } catch {
+    el.textContent = 'Offline — run: python -m uvicorn app.main:app --port 8000';
+    el.style.color = 'var(--high)';
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('login-btn').addEventListener('click', doLogin);
+  document.getElementById('login-pin').addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') doLogin();
+  });
+  checkAPI();
+
+  // Hash routing on direct load
+  const h = location.hash.slice(1);
+  if (h && (h.startsWith('case/') || MODULE_NAMES[h])) {
+    // Will be handled after login
+  }
+});
+</script>
+</body>
+</html>
