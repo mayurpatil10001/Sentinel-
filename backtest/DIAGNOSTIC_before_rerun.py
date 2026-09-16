@@ -1,4 +1,4 @@
-﻿"""
+"""
 DIAGNOSTIC_before_rerun.py - Phase 2 Pump-Dump Backtest Diagnostic
 
 Confirms the real reason PUMP-DUMP-2017-2020 returned 0 days fetched.
@@ -228,13 +228,15 @@ def run():
                     result["conclusion"] = (
                         f"Bhavcopy data obtained ({max_rows} rows/day). "
                         "Symbol NOT present in NSE bhavcopy under any tested variant. "
-                        "CONFIRMED: BSE-only or delisted from NSE during investigation period. "
+                        "Confirmed not NSE-listed. BSE-only status is most probable explanation "
+                        "but has not been independently verified against BSE data. "
                         "0-days result is correct — not a fetch bug."
                     )
             elif all("404" in e for e in errors if e):
                 result["conclusion"] = (
                     "All dates returned 404. Scrip likely not listed on NSE at all, "
-                    "or these specific dates had no trading. PROBABLE: BSE-only listing."
+                    "or these specific dates had no trading. PROBABLE: not NSE-listed "
+                    "(BSE-only listing unconfirmed without BSE data check)."
                 )
             else:
                 result["conclusion"] = (
@@ -257,9 +259,10 @@ def run():
         report["final_verdict"] = "UNTESTABLE_CONFIRMED"
         report["final_reason"] = (
             "None of the 5 scrips found on NSE under any tested symbol or series. "
-            "CONFIRMED: these are BSE-only or delisted instruments. "
-            "The 'likely delisted / wrong exchange' label in the original result.json "
-            "is now confirmed — not a fetch code bug."
+            "Confirmed not NSE-listed (not a fetch code bug). "
+            "BSE-only status is the most probable explanation but has not been "
+            "independently verified against BSE data. "
+            "See backtest/results/PUMP-DUMP-2017-2020_diagnostic_v2.log for evidence."
         )
 
     return report

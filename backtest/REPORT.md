@@ -106,7 +106,7 @@ account-level data does not exist publicly.
 
 | Case | Pre-run verdict | Run verdict | Reason |
 |---|---|---|---|
-| KIL-2019 | PARTIALLY_TESTABLE | **UNTESTABLE** | `KAVIT` not found in NSE bhavcopy across all 103 business days. BSE-only scrip. |
+| KIL-2019 | PARTIALLY_TESTABLE | **UNTESTABLE** | `KAVIT` not found in NSE bhavcopy across all 103 business days. Confirmed not NSE-listed; BSE-only status probable but not independently verified against BSE data. |
 | PUMP-DUMP-2017-2020 | PARTIALLY_TESTABLE | **UNTESTABLE** | All 5 attempted NSE symbols not found in bhavcopy — wrong symbols or delisted. |
 | GIL-2003-2004 | UNTESTABLE | **UNTESTABLE** | Manipulation period Dec 2003–Mar 2004 predates reliable archive coverage. Skipped. |
 
@@ -117,7 +117,7 @@ account-level data does not exist publicly.
 | Business days attempted | 103 |
 | Days `KAVIT` found in NSE bhavcopy | **0** |
 | Fetch errors | 94 (symbol not found in NSE bhavcopy each day) |
-| Conclusion | `KAVIT` not in NSE archives. BSE-only listing confirmed. |
+| Conclusion | `KAVIT` not in NSE archives. Confirmed not NSE-listed; BSE-only status is probable but has not been independently verified against BSE data. |
 
 **Fix required:** A BSE bhavcopy fetcher accessing
 `www.bseindia.com/download/BhavCopy/...` is needed. Buildable; out of
@@ -165,12 +165,14 @@ Fetched `https://archives.nseindia.com/content/equities/EQUITY_L.csv`
 | DARJEELING / ROPEWAY | No | Darjeeling Ropeway not on NSE |
 | VISHAL FAB | Yes — `VISHAL` (INE755Q01025) | Listed from **17-AUG-2026** only — not during 2017-2020 |
 
-**Definitive conclusion:** These scrips are genuinely not accessible in
+**Conclusion:** These scrips are confirmed not accessible in
 NSE bhavcopy for the 2017-2020 manipulation period. They are either
-BSE-only listed, or were delisted from NSE before/during the manipulation
-period. The bug fix was correct and necessary, but it does not change the
-testability verdict — the data simply does not exist under these symbols
-in NSE archives for these dates.
+not NSE-listed, or were delisted before/during the manipulation
+period. BSE-only status is the most probable explanation but has not
+been independently verified against BSE data — a BSE scrip master
+lookup was not performed. The bug fix was correct and necessary, but
+it does not change the testability verdict — the data simply does not
+exist under these symbols in NSE archives for these dates.
 
 **Overall C2 verdict: UNTESTABLE** — confirmed by two independent runs
 and direct EQUITY_L.csv lookup.
@@ -234,7 +236,8 @@ common; coordinated dormant-account buying is not.
    large-cap trading days across RELIANCE, TCS, HDFCBANK, INFY, ICICIBANK.
 
 3. `KAVIT` (Kavit Industries) is confirmed absent from NSE bhavcopy across all
-   103 business days of the investigation period — BSE-only listing.
+   103 business days of the investigation period. Confirmed not NSE-listed;
+   BSE-only status is probable but has not been independently verified against BSE data.
 
 4. The 5 pump-dump cluster scrip symbols guessed were not found in NSE bhavcopy.
    Correct symbols require ISIN lookup against `EQUITY_L.csv`.
