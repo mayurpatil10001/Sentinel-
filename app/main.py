@@ -77,3 +77,15 @@ if _DASHBOARD_STATIC.exists():
         StaticFiles(directory=str(_DASHBOARD_STATIC), html=True),
         name="dashboard",
     )
+
+# ── Operational Console ────────────────────────────────────────────────────────
+# Serves the consolidated regulatory surveillance console at /console/.
+# Built to interface with real backend endpoints (/api/*); all data is
+# mock/sample in this environment.
+_CONSOLE_DIR = pathlib.Path(__file__).parent.parent / "console"
+if _CONSOLE_DIR.exists():
+    app.mount(
+        "/console",
+        StaticFiles(directory=str(_CONSOLE_DIR), html=True),
+        name="console",
+    )

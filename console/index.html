@@ -1411,83 +1411,32 @@ async function loadQueue() {
 
   try {
     const { total, page, page_size, items } = await apiFetch('/api/alerts?' + p);
-    metaEl.textContent = `${total} total records · Page ${page}`;
+    metaEl.textContent = total + ' total records \u00b7 Page ' + page;
 
     if (!items || !items.length) {
-      const active = Object.entries(qFilters).filter(([,v])=>v).map(([k,v])=>`${k}=${v}`).join(', ')||'none';
-      body.innerHTML = `<tr><td colspan="10" class="empty">
-        <p>No surveillance alerts match the active filter criteria.</p>
-        <p>Active filters: ${e(active)}</p>
-        <p>Total records in database: ${total}. If the database is newly initialised, run <code>python demo/run_demo.py</code> to generate sample alerts.</p>
-      </td></tr>`;
-    } else {
-      body.innerHTML = items.map(a => `
-        <tr class="clickable" onclick="navigate('case',{id:'${e(a.id)}'})" title="Open case ${e(sref(a.id))}">
-          <td class="mc">${e(sref(a.id))}</td>
-          <td class="mc">${e(fmtDT(a.window_end))}</td>
-          <td>${e(a.exchange)}</td>
-          <td class="sc">${e(a.instrument_symbol)}</td>
-          <td>${e(pname(a.pattern_type))}</td>
-          <td>${sevBadge(a.severity)}</td>
-          <td class="mc tr">${Number(a.score).toFixed(3)}</td>
-          <td>${statusBadge(a.status)}</td>
-          <td class="mc dc">${e(ageStr(a.window_end))}</td>
-          <td class="mc dc" style="font-size:10px">${e((a.accounts_involved||[]).slice(0,2).join(', '))${(a.accounts_involved||[]).length > 2 ? '…' : ''}}</td>
-        </tr>`).join('');
-    }
-
-    const start = (page-1)*page_size + 1;
-    const end   = Math.min(page*page_size, total);
-    document.getElementById('q-pginfo').textContent =
-      total > 0 ? `Records ${start}–${end} of ${total}` : '0 records';
-    document.getElementById('q-prev').disabled = page <= 1;
-    document.getElementById('q-next').disabled = end >= total;
-
-  } catch(err) {
-    body.innerHTML = errTD(10, err.message);
-    metaEl.textContent = 'Error loading data';
-  }
-}
-
-// Fix: template literal issue with conditional
-async function loadQueueFixed() {
-  const body = document.getElementById('q-body');
-  const metaEl = document.getElementById('q-meta');
-  body.innerHTML = '<tr><td colspan="10" class="loading">Loading surveillance queue…</td></tr>';
-
-  const p = new URLSearchParams({ page: qPage, page_size: PAGE_SIZE });
-  if (qFilters.severity)     p.set('severity', qFilters.severity);
-  if (qFilters.pattern_type) p.set('pattern_type', qFilters.pattern_type);
-  if (qFilters.status)       p.set('status', qFilters.status);
-
-  try {
-    const { total, page, page_size, items } = await apiFetch('/api/alerts?' + p);
-    metaEl.textContent = `${total} total records · Page ${page}`;
-
-    if (!items || !items.length) {
-      const active = Object.entries(qFilters).filter(([,v])=>v).map(([k,v])=>`${k}=${v}`).join(', ') || 'none';
-      body.innerHTML = `<tr><td colspan="10" class="empty">
-        <p>No surveillance alerts match the active filter criteria.</p>
-        <p>Active filters: ${e(active)}</p>
-        <p>Total records in database: ${total}. If newly initialised, run demo/run_demo.py to generate sample alerts.</p>
-      </td></tr>`;
+      const active = Object.entries(qFilters).filter(([,v])=>v).map(([k,v])=>k+'='+v).join(', ') || 'none';
+      body.innerHTML = '<tr><td colspan="10" class="empty">'
+        + '<p>No surveillance alerts match the active filter criteria.</p>'
+        + '<p>Active filters: ' + e(active) + '</p>'
+        + '<p>Total records in database: ' + total + '. If newly initialised, run demo/run_demo.py to generate sample alerts.</p>'
+        + '</td></tr>';
     } else {
       let rows = '';
       for (const a of items) {
         const accts = (a.accounts_involved || []);
-        const acctDisplay = accts.slice(0,2).join(', ') + (accts.length > 2 ? '…' : '');
-        rows += `<tr class="clickable" onclick="navigate('case',{id:'${e(a.id)}'})" title="Open ${e(sref(a.id))}">
-          <td class="mc">${e(sref(a.id))}</td>
-          <td class="mc">${e(fmtDT(a.window_end))}</td>
-          <td>${e(a.exchange)}</td>
-          <td class="sc">${e(a.instrument_symbol)}</td>
-          <td>${e(pname(a.pattern_type))}</td>
-          <td>${sevBadge(a.severity)}</td>
-          <td class="mc tr">${Number(a.score).toFixed(3)}</td>
-          <td>${statusBadge(a.status)}</td>
-          <td class="mc dc">${e(ageStr(a.window_end))}</td>
-          <td class="mc dc" style="font-size:10px">${e(acctDisplay)}</td>
-        </tr>`;
+        const acctDisplay = accts.slice(0,2).join(', ') + (accts.length > 2 ? '\u2026' : '');
+        rows += '<tr class="clickable" onclick="navigate(\'case\',{id:\'' + e(a.id) + '\'})" title="Open ' + e(sref(a.id)) + '">'
+          + '<td class="mc">' + e(sref(a.id)) + '</td>'
+          + '<td class="mc">' + e(fmtDT(a.window_end)) + '</td>'
+          + '<td>' + e(a.exchange) + '</td>'
+          + '<td class="sc">' + e(a.instrument_symbol) + '</td>'
+          + '<td>' + e(pname(a.pattern_type)) + '</td>'
+          + '<td>' + sevBadge(a.severity) + '</td>'
+          + '<td class="mc tr">' + Number(a.score).toFixed(3) + '</td>'
+          + '<td>' + statusBadge(a.status) + '</td>'
+          + '<td class="mc dc">' + e(ageStr(a.window_end)) + '</td>'
+          + '<td class="mc dc" style="font-size:10px">' + e(acctDisplay) + '</td>'
+          + '</tr>';
       }
       body.innerHTML = rows;
     }
@@ -1495,7 +1444,7 @@ async function loadQueueFixed() {
     const start = (page-1)*page_size + 1;
     const end   = Math.min(page*page_size, total);
     document.getElementById('q-pginfo').textContent =
-      total > 0 ? `Records ${start}–${end} of ${total}` : '0 records';
+      total > 0 ? ('Records ' + start + '\u2013' + end + ' of ' + total) : '0 records';
     document.getElementById('q-prev').disabled = page <= 1;
     document.getElementById('q-next').disabled = end >= total;
 
@@ -1504,9 +1453,6 @@ async function loadQueueFixed() {
     metaEl.textContent = 'Error loading data';
   }
 }
-
-// Override broken loadQueue with fixed version
-loadQueue = loadQueueFixed;
 
 function queueFilter() {
   qPage = 1;
