@@ -481,9 +481,9 @@ footer{border-top:1px solid var(--border);padding:28px 32px;
           <div class="sico sii">&#9677;</div>
           <span class="sti">In Progress</span>
         </div>
-        <div class="sit"><strong>Real-case backtest against SEBI enforcement orders</strong>Three real, citable SEBI enforcement orders identified and used as test cases. All case scrips confirmed absent from NSE bhavcopy and NSE symbol master (two independent data sources, log-verified at backtest/results/PUMP-DUMP-2017-2020_diagnostic_v2.log). BSE-only status is the most probable explanation but has not been independently verified against BSE data — structurally untestable without confirmed BSE data access.</div>
+        <div class="sit"><strong>Real-case backtest against SEBI enforcement orders</strong>Three real, citable SEBI enforcement orders identified and used as test cases. All case scrips confirmed absent from NSE bhavcopy and NSE symbol master (two independent data sources, log-verified at backtest/results/KIL-2019_diagnostic_v2.log and backtest/results/PUMP-DUMP-2017-2020_diagnostic_v2.log). BSE-only status is the most probable explanation but has not been independently verified against BSE data — structurally untestable without confirmed BSE data access.</div>
         <div class="sit"><strong>Two production-grade bugs found and fixed during real-data testing</strong>Shared circuit breaker between critical and supplementary data endpoints (commit eae832c); missing symbol whitespace strip (commit 87a93be). Cited openly as evidence of rigour, not hidden.</div>
-        <div class="sit"><strong>BSE bhavcopy fetcher</strong>Would make the Kavit Industries SEBI case (documented +113% price impact) testable. Implementation path is clear; not yet built.</div>
+        <div class="sit"><strong>BSE bhavcopy fetcher</strong>Would make the Kavit Industries SEBI case (SEBI order specifies BSE trading; documented +113% price impact) testable if confirmed listed on BSE. Implementation path is clear; not yet built.</div>
         <div class="snote">Detection efficacy against real, confirmed historical manipulation is still being validated. This is the precise current state — not a hedged claim.</div>
       </div>
 

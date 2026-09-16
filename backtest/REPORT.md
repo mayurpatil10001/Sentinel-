@@ -117,7 +117,8 @@ account-level data does not exist publicly.
 | Business days attempted | 103 |
 | Days `KAVIT` found in NSE bhavcopy | **0** |
 | Fetch errors | 94 (symbol not found in NSE bhavcopy each day) |
-| Conclusion | `KAVIT` not in NSE archives. Confirmed not NSE-listed; BSE-only status is probable but has not been independently verified against BSE data. |
+| Diagnostic log | `backtest/results/KIL-2019_diagnostic_v2.log` (real HTTP 200 fetches for probe dates + NSE symbol master) |
+| Conclusion | `KAVIT` not in NSE archives. Confirmed not NSE-listed (two independent data sources); BSE-only status is probable but has not been independently verified against BSE data. |
 
 **Fix required:** A BSE bhavcopy fetcher accessing
 `www.bseindia.com/download/BhavCopy/...` is needed. Buildable; out of
@@ -264,7 +265,7 @@ common; coordinated dormant-account buying is not.
 | Data needed | Publicly available? | Path |
 |---|---|---|
 | Correct NSE/BSE scrip codes (via ISIN → `EQUITY_L.csv`) | **Yes** | Fix symbol lookup |
-| BSE bhavcopy for BSE-listed case scrips | **Yes** | Build BSE fetcher |
+| BSE bhavcopy for case scrips (probable BSE-only) | **Yes** | Build BSE fetcher |
 | Account-level historical trade data | **No** | Formal NSE/BSE data agreement (Path A) |
 | Historical option chain OI snapshots | **No** | No public archive exists |
 | Historical order books | **No** | Never published by NSE/BSE |
@@ -280,7 +281,7 @@ surveillance data provider.
 After 1,900+ real bhavcopy fetches against three real, citable SEBI cases:
 
 **All three cases were UNTESTABLE** — two because scrips do not appear in NSE
-bhavcopy (BSE-only listing and/or symbol mismatch), one because the manipulation
+bhavcopy (confirmed not NSE-listed; probable BSE-only listing or symbol mismatch, unconfirmed without BSE data), one because the manipulation
 predates the archive.
 
 **The negative control: 0 / 90 days flagged** — the adapter does not fire
@@ -294,7 +295,7 @@ commercial market surveillance system faces the same constraint. Their
 vendors' efficacy claims come from proprietary exchange datasets.
 
 The next step that would materially change this finding:
-1. Fix BSE scrip lookup + add BSE bhavcopy fetcher (makes KIL-2019 testable).
+1. Fix BSE scrip lookup + add BSE bhavcopy fetcher (makes KIL-2019 testable if BSE-listed).
 2. Fix NSE symbol lookup via ISIN cross-reference (makes pump-dump cluster testable).
 3. Pursue formal NSE/BSE data access (Path A from Phase 6 docs).
 

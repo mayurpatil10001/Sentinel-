@@ -97,7 +97,7 @@ CASES: list[SEBICase] = [
             "create artificial volume and a misleading appearance of trading "
             "activity in the KIL scrip on BSE."
         ),
-        data_available_on_nse=False,  # KIL traded on BSE, not NSE
+        data_available_on_nse=False,  # confirmed absent from NSE archives; SEBI order specifies BSE
         summary=(
             "SEBI found that a network of 20 trading accounts, managed by "
             "three individuals, engaged in a pattern of buying and selling "
@@ -109,7 +109,9 @@ CASES: list[SEBICase] = [
         ),
         testability_verdict="PARTIALLY_TESTABLE",
         untestable_reason=(
-            "Kavit Industries traded on BSE, not NSE. The Sentinel "
+            "SEBI's order specifies Kavit Industries traded on BSE; KIL is "
+            "confirmed absent from NSE archives (see "
+            "backtest/results/KIL-2019_diagnostic_v2.log). The Sentinel "
             "ingestion pipeline (nse_bhavcopy.py) fetches NSE bhavcopy only. "
             "A BSE bhavcopy fetch would be needed to retrieve OHLCV for this "
             "scrip. ADDITIONALLY: the detector (circular_trading.py, "
@@ -118,7 +120,7 @@ CASES: list[SEBICase] = [
             "publicly available. Only price/volume anomaly signals can be "
             "tested, via a daily OHLCV adapter."
         ),
-        nse_symbol=None,   # not listed on NSE
+        nse_symbol=None,   # confirmed not listed on NSE
         bse_code="KAVIT",  # approximate — verify on BSE website
         applicable_detectors=["price_volume_anomaly_adapter"],
         inapplicable_detectors={

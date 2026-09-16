@@ -144,12 +144,13 @@ def run_cases() -> dict:
         scrips_to_pull: dict[str, dict] = {}
 
         if case.case_id == "KIL-2019":
-            # Kavit Industries traded on BSE, not NSE.
+            # SEBI order specifies Kavit Industries traded on BSE.
             # We attempt to find it on NSE anyway to be thorough.
-            # It is expected to not be found (BSE-only scrip).
+            # Confirmed absent from NSE archives; BSE-only status probable but unconfirmed.
             logger.info(
-                "KIL-2019: Kavit Industries is a BSE-listed scrip. "
-                "Attempting NSE lookup — expected to fail (will be recorded). "
+                "KIL-2019: Kavit Industries (SEBI order specifies BSE trading; "
+                "confirmed not NSE-listed per diagnostic). Attempting NSE lookup — "
+                "expected to fail (will be recorded). "
                 "A BSE bhavcopy fetcher would be needed for proper testing."
             )
             pull = pull_bhavcopy_for_symbol(

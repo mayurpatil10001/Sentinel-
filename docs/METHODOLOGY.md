@@ -115,10 +115,12 @@ scrip in the same window.
 - min_cycle_participants >= 3
 - max_price_variation_pct <= 0.02 (trades within 2% of each other)
 
-**Validation status**: NOT VALIDATED. The Kavit Industries case (BSE, 2019)
-is a publicly documented circular trading case but involves BSE-only data
-not reachable by the current NSE bhavcopy fetcher. Account-level data
-needed for full validation is not publicly available for any confirmed case.
+**Validation status**: NOT VALIDATED. The Kavit Industries case (SEBI order
+specifies BSE trading, 2019) is a publicly documented circular trading case,
+but KIL is confirmed absent from NSE (two independent data sources, log-verified at
+`backtest/results/KIL-2019_diagnostic_v2.log`). BSE-only status is probable
+but not independently verified against BSE data, and account-level trade data
+needed for full validation is not publicly available.
 
 **Academic reference**: Aggarwal & Wu (2006), "Stock market manipulations,"
 Journal of Business 79(4). SEBI Adjudication Order: Kavit Industries Limited
@@ -268,26 +270,29 @@ necessary but not sufficient condition for usefulness.
 against the exact data window of a confirmed SEBI enforcement case and
 demonstrating it would have fired (true positive). This has not been achieved
 for any detector, primarily because:
-1. The relevant SEBI cases involve BSE-listed instruments not reachable by
-   the NSE bhavcopy fetcher.
+1. The relevant SEBI cases involve instruments confirmed absent from NSE
+   archives (probable BSE-only, not reachable by the NSE bhavcopy fetcher).
 2. Account-level order data for historical confirmed manipulation cases is
    not publicly available in India.
-3. The one NSE-attempted case (Mauria Udyog cluster) involves scrips confirmed absent
-   from NSE bhavcopy and NSE symbol master (two independent sources, both log-verified at
+3. Both case investigations (KIL-2019 and Mauria Udyog cluster) involve scrips
+   confirmed absent from NSE bhavcopy and NSE symbol master (two independent sources each,
+   both log-verified at `backtest/results/KIL-2019_diagnostic_v2.log` and
    `backtest/results/PUMP-DUMP-2017-2020_diagnostic_v2.log`). These instruments are
    confirmed not NSE-listed; positive BSE listing has not been independently verified.
 
 ---
 
-## 5. Backtest Results Summary (as of 2026-09-16)
+## 5. Backtest Results Summary (as of 2026-09-17)
 
 Two SEBI cases were selected for backtesting:
 
-**Case KIL-2019** (Kavit Industries Limited, BSE circular trading, 2019):
-- Verdict: PARTIALLY_TESTABLE
-- Reason: BSE-only instrument. NSE bhavcopy fetcher cannot retrieve data.
-  Account-level trade data is not public. Only daily price/volume signals
-  could theoretically be tested, but the relevant adapter is not implemented.
+**Case KIL-2019** (Kavit Industries Limited, circular trading, 2019):
+- Verdict: UNTESTABLE
+- Log: `backtest/results/KIL-2019_diagnostic_v2.log` (timestamp 2026-09-17T02:34:27Z)
+- Evidence: Kavit Industries (KAVIT) absent from NSE EQ bhavcopy for probe dates across 2019 investigation window (2019-10-15 [1,494 rows] and 2019-08-16 [1,518 rows], HTTP 200 from archives.nseindia.com, RELIANCE used as connectivity control; BE series returned 0 rows). Independently confirmed absent from NSE currently-listed symbol master (2,571 symbols, HTTP 200). The 0-days-fetched result is NOT a fetch code bug.
+- What is confirmed: KIL/KAVIT is not NSE-listed (two independent data sources).
+- What is NOT confirmed: Positive BSE listing. No BSE scrip master lookup was performed. BSE-only status is the most probable explanation (and SEBI's order specifies BSE trading), but has not been independently verified against BSE data.
+- Account-level circular trading data (account-to-account trade matching) is not public.
 
 **Case PUMP-DUMP-2017-2020** (Mauria Udyog cluster, 2017-2020):
 - Verdict: UNTESTABLE

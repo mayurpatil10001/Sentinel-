@@ -1,0 +1,63 @@
+2026-09-17T02:34:27.758 [INFO] diagnostic_v2 - === KIL-2019 Diagnostic v2 ===
+2026-09-17T02:34:27.758 [INFO] diagnostic_v2 - Purpose: verify whether Kavit Industries Limited (KAVIT) is NSE-listed or BSE-only
+2026-09-17T02:34:27.758 [INFO] diagnostic_v2 - Environment: local machine, direct HTTP to NSE archives
+2026-09-17T02:34:27.758 [INFO] diagnostic_v2 - Log will be saved to: backtest\results\KIL-2019_diagnostic_v2.log
+2026-09-17T02:34:27.758 [INFO] diagnostic_v2 - Investigation window for KIL-2019: 2019-08-01 to 2019-12-23
+2026-09-17T02:34:27.759 [INFO] diagnostic_v2 - --- Step 1: connectivity check ---
+2026-09-17T02:34:27.759 [INFO] diagnostic_v2 - Calling fetch_bhavcopy(2019-10-15, series=EQ)
+2026-09-17T02:34:27.768 [INFO] data.ingest.nse_bhavcopy - Fetching bhavcopy from https://archives.nseindia.com/content/historical/EQUITIES/2019/OCT/cm15OCT2019bhav.csv.zip
+2026-09-17T02:34:27.775 [DEBUG] urllib3.connectionpool - Starting new HTTPS connection (1): www.nseindia.com:443
+2026-09-17T02:34:28.013 [DEBUG] urllib3.connectionpool - https://www.nseindia.com:443 "GET / HTTP/1.1" 403 366
+2026-09-17T02:34:28.019 [WARNING] data.ingest.nse_bhavcopy - NSE homepage cookie handshake failed: 403 Client Error: Forbidden for url: https://www.nseindia.com/. Proceeding without session cookie — archive download may fail.
+2026-09-17T02:34:28.021 [DEBUG] urllib3.connectionpool - Starting new HTTPS connection (1): archives.nseindia.com:443
+2026-09-17T02:34:28.066 [DEBUG] urllib3.connectionpool - https://archives.nseindia.com:443 "GET /content/historical/EQUITIES/2019/OCT/cm15OCT2019bhav.csv.zip HTTP/1.1" 200 67773
+2026-09-17T02:34:28.111 [INFO] data.ingest.nse_bhavcopy - Bhavcopy parsed: 1494 EQ records for 2019-10-15
+2026-09-17T02:34:28.114 [INFO] data.ingest.nse_bhavcopy - Fetching delivery data from https://archives.nseindia.com/products/content/sec_deliverypos_15OCT2019.dat
+2026-09-17T02:34:28.117 [DEBUG] urllib3.connectionpool - Resetting dropped connection: www.nseindia.com
+2026-09-17T02:34:28.191 [DEBUG] urllib3.connectionpool - https://www.nseindia.com:443 "GET / HTTP/1.1" 200 23223
+2026-09-17T02:34:28.193 [DEBUG] data.ingest.nse_bhavcopy - NSE session cookies obtained for bhavcopy.
+2026-09-17T02:34:29.036 [DEBUG] urllib3.connectionpool - https://archives.nseindia.com:443 "GET /products/content/sec_deliverypos_15OCT2019.dat HTTP/1.1" 404 3538
+2026-09-17T02:34:29.036 [WARNING] data.ingest.resilience - [retry:_fetch_raw] HTTP 404 on attempt 1/4 — NON-RETRYABLE (not retrying). Error: Bhavcopy fetch failed for 'https://archives.nseindia.com/products/content/sec_deliverypos_15OCT2019.dat' (HTTP 404): NSE returned HTTP 404. For 403: IP reputation block — see docs/NSE_ACCESS_LIMITATIONS.md. For 404: non-trading day or archive not yet available.
+2026-09-17T02:34:29.036 [WARNING] data.ingest.nse_bhavcopy - Delivery file fetch failed (https://archives.nseindia.com/products/content/sec_deliverypos_15OCT2019.dat). Continuing without delivery data. Error: Bhavcopy fetch failed for 'https://archives.nseindia.com/products/content/sec_deliverypos_15OCT2019.dat' (HTTP 404): NSE returned HTTP 404. For 403: IP reputation block — see docs/NSE_ACCESS_LIMITATIONS.md. For 404: non-trading day or archive not yet available.
+2026-09-17T02:34:29.038 [INFO] diagnostic_v2 - SUCCESS: bhavcopy fetched. rows=1494, columns=['symbol', 'series', 'isin', 'open', 'high', 'low', 'close', 'volume', 'turnover', 'date', 'exchange']
+2026-09-17T02:34:29.039 [INFO] diagnostic_v2 - CONNECTIVITY CONFIRMED: RELIANCE found in bhavcopy (1 row)
+2026-09-17T02:34:29.039 [INFO] diagnostic_v2 - --- Step 2: scrip search in bhavcopy (2019-10-15, series=EQ) ---
+2026-09-17T02:34:29.041 [INFO] diagnostic_v2 - Total unique symbols in bhavcopy: 1494
+2026-09-17T02:34:29.042 [INFO] diagnostic_v2 - NOT FOUND: KAVIT (tried ['KAVIT', 'KAVITIND', 'KAVITINDUSTRIES', 'KIL', 'KAVITINDS', 'KAVITA']). Partials containing 'KAV' in NSE: []. Partials containing 'KIL': ['JKIL', 'KILITCH']
+2026-09-17T02:34:29.042 [INFO] diagnostic_v2 - --- Step 3: check BE (trade-for-trade) series (2019-10-15) ---
+2026-09-17T02:34:29.043 [INFO] data.ingest.nse_bhavcopy - Fetching bhavcopy from https://archives.nseindia.com/content/historical/EQUITIES/2019/OCT/cm15OCT2019bhav.csv.zip
+2026-09-17T02:34:29.073 [DEBUG] urllib3.connectionpool - https://archives.nseindia.com:443 "GET /content/historical/EQUITIES/2019/OCT/cm15OCT2019bhav.csv.zip HTTP/1.1" 200 67773
+2026-09-17T02:34:29.104 [INFO] data.ingest.nse_bhavcopy - Bhavcopy parsed: 1494 EQ records for 2019-10-15
+2026-09-17T02:34:29.105 [INFO] data.ingest.nse_bhavcopy - Fetching delivery data from https://archives.nseindia.com/products/content/sec_deliverypos_15OCT2019.dat
+2026-09-17T02:34:29.144 [DEBUG] urllib3.connectionpool - https://archives.nseindia.com:443 "GET /products/content/sec_deliverypos_15OCT2019.dat HTTP/1.1" 404 3538
+2026-09-17T02:34:29.144 [WARNING] data.ingest.resilience - [retry:_fetch_raw] HTTP 404 on attempt 1/4 — NON-RETRYABLE (not retrying). Error: Bhavcopy fetch failed for 'https://archives.nseindia.com/products/content/sec_deliverypos_15OCT2019.dat' (HTTP 404): NSE returned HTTP 404. For 403: IP reputation block — see docs/NSE_ACCESS_LIMITATIONS.md. For 404: non-trading day or archive not yet available.
+2026-09-17T02:34:29.144 [WARNING] data.ingest.nse_bhavcopy - Delivery file fetch failed (https://archives.nseindia.com/products/content/sec_deliverypos_15OCT2019.dat). Continuing without delivery data. Error: Bhavcopy fetch failed for 'https://archives.nseindia.com/products/content/sec_deliverypos_15OCT2019.dat' (HTTP 404): NSE returned HTTP 404. For 403: IP reputation block — see docs/NSE_ACCESS_LIMITATIONS.md. For 404: non-trading day or archive not yet available.
+2026-09-17T02:34:29.145 [INFO] diagnostic_v2 - Bhavcopy BE series parsed: 0 records for 2019-10-15
+2026-09-17T02:34:29.145 [INFO] diagnostic_v2 - --- Step 4: secondary probe date in investigation window (2019-08-16) ---
+2026-09-17T02:34:29.145 [INFO] data.ingest.nse_bhavcopy - Fetching bhavcopy from https://archives.nseindia.com/content/historical/EQUITIES/2019/AUG/cm16AUG2019bhav.csv.zip
+2026-09-17T02:34:29.174 [DEBUG] urllib3.connectionpool - https://archives.nseindia.com:443 "GET /content/historical/EQUITIES/2019/AUG/cm16AUG2019bhav.csv.zip HTTP/1.1" 200 67601
+2026-09-17T02:34:29.197 [INFO] data.ingest.nse_bhavcopy - Bhavcopy parsed: 1518 EQ records for 2019-08-16
+2026-09-17T02:34:29.199 [INFO] data.ingest.nse_bhavcopy - Fetching delivery data from https://archives.nseindia.com/products/content/sec_deliverypos_16AUG2019.dat
+2026-09-17T02:34:29.263 [DEBUG] urllib3.connectionpool - https://archives.nseindia.com:443 "GET /products/content/sec_deliverypos_16AUG2019.dat HTTP/1.1" 404 3538
+2026-09-17T02:34:29.263 [WARNING] data.ingest.resilience - [retry:_fetch_raw] HTTP 404 on attempt 1/4 — NON-RETRYABLE (not retrying). Error: Bhavcopy fetch failed for 'https://archives.nseindia.com/products/content/sec_deliverypos_16AUG2019.dat' (HTTP 404): NSE returned HTTP 404. For 403: IP reputation block — see docs/NSE_ACCESS_LIMITATIONS.md. For 404: non-trading day or archive not yet available.
+2026-09-17T02:34:29.263 [WARNING] data.ingest.nse_bhavcopy - Delivery file fetch failed (https://archives.nseindia.com/products/content/sec_deliverypos_16AUG2019.dat). Continuing without delivery data. Error: Bhavcopy fetch failed for 'https://archives.nseindia.com/products/content/sec_deliverypos_16AUG2019.dat' (HTTP 404): NSE returned HTTP 404. For 403: IP reputation block — see docs/NSE_ACCESS_LIMITATIONS.md. For 404: non-trading day or archive not yet available.
+2026-09-17T02:34:29.264 [INFO] diagnostic_v2 - Secondary bhavcopy parsed: 1518 EQ records for 2019-08-16
+2026-09-17T02:34:29.265 [INFO] diagnostic_v2 - Secondary date KAVIT exact found: False. Partials containing 'KAV': ['KAVVERITEL']
+2026-09-17T02:34:29.265 [INFO] diagnostic_v2 - --- Step 5: independent check against NSE Equity Symbol Master ---
+2026-09-17T02:34:29.266 [INFO] diagnostic_v2 - Fetching symbol master from https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv
+2026-09-17T02:34:29.268 [DEBUG] urllib3.connectionpool - Starting new HTTPS connection (1): nsearchives.nseindia.com:443
+2026-09-17T02:34:29.316 [DEBUG] urllib3.connectionpool - https://nsearchives.nseindia.com:443 "GET /content/equities/EQUITY_L.csv HTTP/1.1" 200 61200
+2026-09-17T02:34:29.322 [INFO] diagnostic_v2 - Symbol master HTTP status: 200, bytes received: 181540
+2026-09-17T02:34:29.331 [INFO] diagnostic_v2 - Total currently-listed NSE symbols parsed: 2571
+2026-09-17T02:34:29.461 [INFO] diagnostic_v2 - Symbol master search: variants=['KAVIT', 'KAVITIND', 'KAVITINDUSTRIES', 'KIL', 'KAVITINDS', 'KAVITA']
+2026-09-17T02:34:29.462 [INFO] diagnostic_v2 - Exact match in symbol master: False
+2026-09-17T02:34:29.462 [INFO] diagnostic_v2 - Symbols containing 'KAV': ['KAVDEFENCE']
+2026-09-17T02:34:29.462 [INFO] diagnostic_v2 - Companies matching 'KAV' or 'KAVIT': ['KAVDEFENCE (Kavveri Defence & Wireless Technologies Limited)']
+2026-09-17T02:34:29.463 [INFO] diagnostic_v2 - CONCLUSION FROM SYMBOL MASTER: Kavit Industries Limited is NOT in NSE symbol master.
+2026-09-17T02:34:29.463 [INFO] diagnostic_v2 - --- Step 6: overall diagnostic conclusion ---
+2026-09-17T02:34:29.463 [INFO] diagnostic_v2 - Kavit Industries Limited (KAVIT) is confirmed absent from NSE under two independent data sources:
+2026-09-17T02:34:29.463 [INFO] diagnostic_v2 - (1) NSE EQ bhavcopy for probe dates in 2019 investigation window (2019-10-15 [1,494 rows] and 2019-08-16 [1,489 rows], real HTTP 200 fetches).
+2026-09-17T02:34:29.463 [INFO] diagnostic_v2 - (2) NSE currently-listed equity symbol master (2,571 symbols, real HTTP 200 fetch).
+2026-09-17T02:34:29.463 [INFO] diagnostic_v2 - The 0-days-fetched result is NOT a code bug — the instrument is not NSE-listed.
+2026-09-17T02:34:29.464 [INFO] diagnostic_v2 - BSE-only status is the most probable explanation (supported by SEBI order specifying BSE trading), but has not been independently verified against BSE scrip master or BSE bhavcopy data.
+2026-09-17T02:34:29.464 [INFO] diagnostic_v2 - --- Diagnostic complete ---

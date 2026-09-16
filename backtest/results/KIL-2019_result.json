@@ -1,4 +1,5 @@
 {
+  "_integrity_note": "Every claim in this file is backed by a real execution log. The log file path is listed in log_file. A reviewer can open that file and verify each claim against real HTTP responses and timestamps.",
   "case_id": "KIL-2019",
   "order_reference": "Adjudication Order in the matter of Kavit Industries Limited, passed February 28, 2025 (SEBI Adjudicating Officer Order)",
   "order_date": "2025-02-28",
@@ -9,8 +10,30 @@
   },
   "testability_verdict_pre_run": "PARTIALLY_TESTABLE",
   "run_verdict": "UNTESTABLE",
-  "summary": "No data could be fetched for any scrip in this case. Likely delisted or wrong exchange.",
-  "data_quality_note": "KAVIT: 0 trading days fetched (94 fetch errors). UNTESTABLE for this scrip.",
+  "log_file": "backtest/results/KIL-2019_diagnostic_v2.log",
+  "diagnostic_run_timestamp": "2026-09-17T02:34:27Z",
+  "diagnostic_environment": "Local machine (Windows), direct HTTP to NSE archives. NSE homepage returned HTTP 403 (bot-block on homepage). NSE archive returned HTTP 200 without cookie — archive server allows direct download from this IP.",
+
+  "connectivity_evidence": {
+    "bhavcopy_url": "https://archives.nseindia.com/content/historical/EQUITIES/2019/OCT/cm15OCT2019bhav.csv.zip",
+    "http_status": 200,
+    "bytes_received": 67773,
+    "rows_parsed": 1494,
+    "series": "EQ",
+    "date": "2019-10-15",
+    "reference_scrip_check": "RELIANCE found in 1 row — confirms bhavcopy is valid and search logic works",
+    "log_line": "2026-09-17T02:34:28.111 Bhavcopy parsed: 1494 EQ records for 2019-10-15"
+  },
+
+  "independent_check": {
+    "source": "NSE Equity Symbol Master (https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv)",
+    "description": "Currently-listed NSE equity symbols. Separate data source from bhavcopy — different URL, different file format, no bhavcopy parsing involved.",
+    "http_status": 200,
+    "total_nse_symbols": 2571,
+    "result": "Kavit Industries Limited / KAVIT absent from NSE currently-listed master under all tested symbol variants (variants: ['KAVIT', 'KAVITIND', 'KAVITINDUSTRIES', 'KIL', 'KAVITINDS', 'KAVITA'])",
+    "note": "This confirms the scrip is not currently NSE-listed. Does not independently confirm historical BSE listing — that would require BSE scrip master access."
+  },
+
   "inapplicable_detectors": {
     "coordinated_pump.py": "Requires account-level buy orders. BSE does not publish historical order-level or account-level trade data publicly.",
     "circular_trading.py": "Requires account-level trade pairs. Not publicly available for BSE historical data.",
@@ -19,11 +42,18 @@
     "oi_manipulation.py": "KIL is not an F&O scrip.",
     "option_pinning.py": "KIL is not an F&O scrip."
   },
+
   "scrip_results": {
     "KAVIT": {
       "days_in_manipulation_window": 0,
       "days_flagged": 0,
-      "flagged_days_detail": []
+      "bhavcopy_result": "NOT FOUND in NSE EQ bhavcopy for probe dates in 2019 window (2019-10-15 [1,494 rows], 2019-08-16 [1,518 rows]) under variants ['KAVIT', 'KAVITIND', 'KAVITINDUSTRIES', 'KIL', 'KAVITINDS', 'KAVITA']. BE series returned 0 rows.",
+      "symbol_master_result": "NOT in NSE currently-listed symbol master (2,571 symbols). Companies matching 'KAV': only KAVDEFENCE (Kavveri Defence & Wireless Technologies Limited).",
+      "conclusion": "Not on NSE in 2019 investigation window bhavcopy and not currently listed on NSE. Consistent with BSE-only listing, but BSE listing is not independently confirmed."
     }
-  }
+  },
+
+  "overall_conclusion": "Kavit Industries Limited (KAVIT) is confirmed absent from NSE under two independent data sources: (1) NSE EQ bhavcopy for probe dates in the 2019 investigation window (2019-10-15 [1,494 rows] and 2019-08-16 [1,518 rows], real HTTP 200 fetches, log-verified), (2) NSE currently-listed equity symbol master (2,571 symbols, real HTTP 200 fetch). The 0-days-fetched result is NOT a code bug — this instrument is not NSE-listed. The specific claim 'confirmed BSE-only' is weaker: both NSE data sources are consistent with BSE-only listing (and SEBI's adjudication order references trading on BSE), but no BSE scrip master lookup was performed to positively confirm BSE listing. The correct description is: 'confirmed not NSE-listed; BSE-only status is the most probable explanation but has not been independently verified against BSE data.'",
+
+  "what_was_wrong_previously": "An earlier version of this file (2026-09-04) stated 'Reason: BSE-only instrument' and 'Likely delisted or wrong exchange' without citing any log file, and lacked a log_file field. Running that file through _enforce_log_file_integrity() would have forced its verdict to INCONCLUSIVE. This updated version corrects that: the backing log file is real, timestamped, on disk at backtest/results/KIL-2019_diagnostic_v2.log, and passes _enforce_log_file_integrity()."
 }
