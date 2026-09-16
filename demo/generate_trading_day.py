@@ -41,7 +41,7 @@ def make_equity(sym, itype=InstrumentType.EQUITY, avg_vol=500000, avg_ord=500, a
     return Instrument(id=_id(), symbol=sym, exchange="NSE", instrument_type=itype,
         avg_daily_volume_30d=avg_vol, avg_order_size_30d=avg_ord, avg_daily_turnover_30d=avg_to)
 
-def make_index(sym="NIFTY"):
+def make_index(sym="SAMPLEIDX"):
     return Instrument(id=_id(), symbol=sym, exchange="NSE", instrument_type=InstrumentType.INDEX,
         avg_daily_volume_30d=0, avg_order_size_30d=0, avg_daily_turnover_30d=0)
 
@@ -235,10 +235,15 @@ def run_trading_day():
 
     # 1. CLEAN instruments
     print("\n[1/9] Clean instruments (assert 0 alerts)...")
+    # Real company names appear ONLY as clean negative-control instruments.
+    # Fictional names (SPOOFERLTD, CIRCLETRADE, etc.) are used for all
+    # manipulation scenarios. RELIANCE is here as a clean baseline —
+    # it proves the system does not cry wolf on real large-cap activity.
     for sym, avg_vol, avg_ord, avg_to, price in [
         ("RELIABLETEX", 800000, 600, 480000000, 950.0),
         ("STEADYINFRA",  200000, 300,  60000000, 280.0),
         ("BALANCEDFIN",  350000, 400, 140000000, 380.0),
+        ("RELIANCE",   5000000, 2000, 14250000000, 2850.0),  # clean baseline: real large-cap
     ]:
         inst = make_equity(sym, avg_vol=avg_vol, avg_ord=avg_ord, avg_to=avg_to)
         db.add(inst); db.flush()
@@ -295,48 +300,53 @@ def run_trading_day():
         "pattern": "coordinated_pump", "alerts_fired": len(pm_sigs)})
     print(f"  {len(pm_sigs)} signal(s)")
 
-    # 5. NIFTY option pinning (expiry day)
-    print("\n[5/9] NIFTY option pinning...")
-    nifty = make_index("NIFTY"); db.add(nifty); db.flush()
+    # 5. SAMPLEIDX option pinning (expiry day)
+    # Fictional index instrument — real index names (NIFTY, SENSEX) are not used
+    # in manipulation scenarios to avoid implying a real accusation.
+    print("\n[5/9] SAMPLEIDX option pinning...")
+    sampleidx = make_index("SAMPLEIDX"); db.add(sampleidx); db.flush()
     snap = datetime(2026, 9, 17, 15, 0, 0)
     pin_chain = _make_chain(19498.0, date(2026,9,17),
         strikes=[19200,19300,19400,19500,19600,19700,19800],
         ce_oi=[20000,50000,80000,450000,60000,40000,20000],
         pe_oi=[25000,55000,90000,450000,55000,35000,15000])
-    pin_sig = detect_option_pinning(chain_df=pin_chain, symbol="NIFTY", exchange="NSE",
+    pin_sig = detect_option_pinning(chain_df=pin_chain, symbol="SAMPLEIDX", exchange="NSE",
         spot_price=19498.0, expiry_date=date(2026,9,17), snapshot_time=snap)
     if pin_sig:
-        _save_alert(db, nifty.id, "option_pinning", pin_sig, all_alerts, results)
+        _save_alert(db, sampleidx.id, "option_pinning", pin_sig, all_alerts, results)
         print(f"  score={pin_sig.score:.3f} severity={pin_sig.severity}")
     else:
         print("  No signal")
-    results["instruments"].append({"symbol":"NIFTY","type":"MANIPULATED","pattern":"option_pinning","alerts_fired": 1 if pin_sig else 0})
+    results["instruments"].append({"symbol":"SAMPLEIDX","type":"MANIPULATED","pattern":"option_pinning","alerts_fired": 1 if pin_sig else 0})
 
-    # 6. NIFTY OI concentration
-    print("\n[6/9] NIFTY OI concentration...")
+    # 6. SAMPLEIDX OI concentration
+    print("\n[6/9] SAMPLEIDX OI concentration...")
     oi_snap = _ts(180)
     oi_chain = _make_chain(19482.0, date(2026,9,25),
         strikes=[18800,19000,19200,19400,19500,19600,19800,20000],
         ce_oi=[15000,30000,50000,420000,85000,60000,25000,10000],
         pe_oi=[10000,20000,40000,80000,100000,70000,30000,10000])
-    oi_sigs = detect_oi_concentration(chain_df=oi_chain, symbol="NIFTY", exchange="NSE", snapshot_time=oi_snap)
-    for s in oi_sigs: _save_alert(db, nifty.id, "oi_manipulation", s, all_alerts, results)
+    oi_sigs = detect_oi_concentration(chain_df=oi_chain, symbol="SAMPLEIDX", exchange="NSE", snapshot_time=oi_snap)
+    for s in oi_sigs: _save_alert(db, sampleidx.id, "oi_manipulation", s, all_alerts, results)
     print(f"  {len(oi_sigs)} signal(s)")
 
-    # 7. RELIANCE basis distortion
-    print("\n[7/9] RELIANCE basis distortion...")
-    reliance = make_equity("RELIANCE", avg_vol=5000000, avg_ord=2000, avg_to=14250000000)
-    db.add(reliance); db.flush()
+    # 7. SAMPLEFUT basis distortion
+    # Fictional futures instrument — real company names (RELIANCE, etc.) are not
+    # used in manipulation scenarios to avoid implying a real accusation against
+    # a named, publicly-traded company. Consistent with SPOOFERLTD/CIRCLETRADE naming.
+    print("\n[7/9] SAMPLEFUT basis distortion...")
+    samplefut = make_equity("SAMPLEFUT", avg_vol=500000, avg_ord=500, avg_to=1425000000)
+    db.add(samplefut); db.flush()
     basis_snap = _ts(150)
-    basis_sig = detect_basis_distortion(symbol="RELIANCE", exchange="NSE",
+    basis_sig = detect_basis_distortion(symbol="SAMPLEFUT", exchange="NSE",
         spot_price=2850.0, futures_price=2916.0,
         expiry_date=date(2026,9,25), snapshot_time=basis_snap, risk_free_rate=0.065)
     if basis_sig:
-        _save_alert(db, reliance.id, "basis_distortion", basis_sig, all_alerts, results)
+        _save_alert(db, samplefut.id, "basis_distortion", basis_sig, all_alerts, results)
         print(f"  score={basis_sig.score:.3f} severity={basis_sig.severity}")
     else:
         print("  No signal (basis within threshold)")
-    results["instruments"].append({"symbol":"RELIANCE","type":"MANIPULATED","pattern":"basis_distortion","alerts_fired": 1 if basis_sig else 0})
+    results["instruments"].append({"symbol":"SAMPLEFUT","type":"MANIPULATED","pattern":"basis_distortion","alerts_fired": 1 if basis_sig else 0})
 
     # 8. DOUBLEHIT - two detectors on same scrip
     print("\n[8/9] DOUBLEHIT - spoofing + coordinated pump...")
@@ -357,8 +367,8 @@ def run_trading_day():
 
     # 9. Clean verification
     print("\n[9/9] Verifying no false positives on clean instruments...")
-    clean_syms = {"RELIABLETEX","STEADYINFRA","BALANCEDFIN"}
-    alert_insts = {a.get("instrument","") for a in results["alerts"]}
+    clean_syms = {"RELIABLETEX", "STEADYINFRA", "BALANCEDFIN", "RELIANCE"}
+    alert_insts = {a.get("instrument", "") for a in results["alerts"]}
     fp = clean_syms & alert_insts
     assert not fp, f"FALSE POSITIVE on clean instruments: {fp}"
     print(f"  Verified: 0 false positives")
