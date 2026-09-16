@@ -1,4 +1,4 @@
-﻿# Sentinel — Detection Methodology
+# Sentinel — Detection Methodology
 
 **Version**: 0.2.0-SAMPLE  
 **Date**: 2026-09-16  
@@ -152,8 +152,11 @@ Volume profile over a rolling window. Ideally: price data for context.
 - Score >= 0.60 triggers MEDIUM; >= 0.75 triggers HIGH
 
 **Validation status**: NOT VALIDATED. The Mauria Udyog / Hanif Shekh cluster
-(NSE/BSE, 2017-2020) is a relevant case but all 5 scrips in that case are
-confirmed unavailable via NSE equity bhavcopy (either BSE-only or delisted).
+(NSE/BSE, 2017-2020) is a relevant case. Diagnostic (log: `backtest/results/PUMP-DUMP-2017-2020_diagnostic_v2.log`,
+timestamp 2026-09-17T01:24:01Z) confirmed all 5 scrips are absent from NSE EQ bhavcopy
+(2018-06-15, 1,494 rows fetched, HTTP 200) and absent from the NSE currently-listed symbol
+master (2,571 symbols, HTTP 200). These instruments are confirmed not NSE-listed. Whether
+they were positively listed on BSE has not been independently verified against BSE data.
 Account-level coordination data is not in public archives for any confirmed case.
 
 **Academic reference**: Comerton-Forde & Putniņš (2015), "Stock price
@@ -269,8 +272,10 @@ for any detector, primarily because:
    the NSE bhavcopy fetcher.
 2. Account-level order data for historical confirmed manipulation cases is
    not publicly available in India.
-3. The one NSE-listed case attempted (Mauria Udyog cluster) involves scrips
-   confirmed to be unavailable via NSE bhavcopy.
+3. The one NSE-attempted case (Mauria Udyog cluster) involves scrips confirmed absent
+   from NSE bhavcopy and NSE symbol master (two independent sources, both log-verified at
+   `backtest/results/PUMP-DUMP-2017-2020_diagnostic_v2.log`). These instruments are
+   confirmed not NSE-listed; positive BSE listing has not been independently verified.
 
 ---
 
@@ -285,14 +290,18 @@ Two SEBI cases were selected for backtesting:
   could theoretically be tested, but the relevant adapter is not implemented.
 
 **Case PUMP-DUMP-2017-2020** (Mauria Udyog cluster, 2017-2020):
-- Verdict: UNTESTABLE (confirmed by Phase 2 diagnostic)
-- Reason: All 5 scrips (MAURIUDYOG, 7NRRETAIL, GBLIND, VISHALFAB, DARJROPE)
-  return 0 days fetched from NSE bhavcopy. Diagnostic confirms this is not
-  a fetch bug — the instruments are either BSE-only or delisted and thus
-  genuinely not available via the NSE equity bhavcopy archive. The
-  "likely delisted" label is confirmed correct.
+- Verdict: UNTESTABLE
+- Log: `backtest/results/PUMP-DUMP-2017-2020_diagnostic_v2.log` (timestamp 2026-09-17T01:24:01Z)
+- Evidence: All 5 scrips absent from NSE EQ bhavcopy 2018-06-15 (1,494 rows, HTTP 200
+  from archives.nseindia.com, RELIANCE used as connectivity control). Independently
+  confirmed absent from NSE currently-listed symbol master (2,571 symbols, HTTP 200).
+  The 0-days-fetched result is NOT a fetch code bug.
+- What is confirmed: These instruments are not NSE-listed (two independent data sources).
+- What is NOT confirmed: Positive BSE listing. No BSE scrip master lookup was performed.
+  The most probable explanation is BSE-only or delisted status, but this has not been
+  independently verified against BSE data.
 - Account-level manipulation data (coordinated buys below bulk deal threshold)
-  was by design not in any public archive.
+  is not in any public archive.
 
 **Negative control** (clean large-cap NSE data):
 - 252 trading days tested for spoofing/layering detector.

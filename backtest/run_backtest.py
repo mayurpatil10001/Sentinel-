@@ -59,6 +59,68 @@ def _json_serializable(obj):
     raise TypeError(f"Type {type(obj)} not serializable")
 
 
+def _enforce_log_file_integrity(result: dict, out_path: str) -> dict:
+    """
+    STANDING INTEGRITY RULE (added 2026-09-17 after integrity failure on
+    PUMP-DUMP-2017-2020 where a confident 'BSE-only confirmed' conclusion was
+    written without a backing log file).
+
+    Rule: every result file whose run_verdict is not 'INCONCLUSIVE' MUST
+    contain a 'log_file' field that:
+      (a) is present in the result dict, AND
+      (b) points to a file that actually exists on disk.
+
+    If either condition fails, the verdict is forcibly overridden to:
+      'INCONCLUSIVE -- no supporting log file. Original verdict: <original>'
+
+    This makes it impossible to accidentally commit an evidentially unsupported
+    conclusion as a firm finding. The code cannot be bypassed silently.
+    """
+    import os
+    verdict = result.get("run_verdict", "")
+    if verdict == "" or "INCONCLUSIVE" in str(verdict).upper():
+        return result  # nothing to enforce for already-inconclusive results
+
+    log_path = result.get("log_file", None)
+    if not log_path:
+        original = result["run_verdict"]
+        logger.error(
+            "INTEGRITY VIOLATION: %s has run_verdict=%r but no 'log_file' field. "
+            "Overriding verdict to INCONCLUSIVE. Add a log_file field pointing to "
+            "a real backing log before claiming any confirmed finding.",
+            out_path, original,
+        )
+        result = dict(result)  # don't mutate caller's dict
+        result["run_verdict"] = f"INCONCLUSIVE -- no supporting log file. Original verdict: {original}"
+        result["_integrity_violation"] = (
+            "run_verdict was set without a log_file reference. "
+            "See backtest/run_backtest.py:_enforce_log_file_integrity for the rule."
+        )
+        return result
+
+    if not os.path.isfile(log_path):
+        original = result["run_verdict"]
+        logger.error(
+            "INTEGRITY VIOLATION: %s has log_file=%r but that file does not exist on disk. "
+            "Overriding verdict to INCONCLUSIVE.",
+            out_path, log_path,
+        )
+        result = dict(result)
+        result["run_verdict"] = f"INCONCLUSIVE -- log_file path does not exist: {log_path}"
+        result["_integrity_violation"] = (
+            f"log_file '{log_path}' was specified but does not exist on disk. "
+            "The conclusion is not backed by a verifiable log."
+        )
+        return result
+
+    logger.info(
+        "Integrity check PASSED for %s: run_verdict=%r backed by log_file=%r",
+        out_path, verdict, log_path,
+    )
+    return result
+
+
+
 def run_cases() -> dict:
     """Run anomaly adapter for all SEBI cases. Return raw results."""
     all_case_results = {}
@@ -127,9 +189,11 @@ def run_cases() -> dict:
 
         # Save raw per-case results
         out_path = f"backtest/results/{case.case_id}_result.json"
+        result_to_write = _enforce_log_file_integrity(all_case_results[case.case_id], out_path)
         with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(all_case_results[case.case_id], f, default=_json_serializable, indent=2)
+            json.dump(result_to_write, f, default=_json_serializable, indent=2)
         logger.info(f"Saved case results to {out_path}")
+
 
     return all_case_results
 

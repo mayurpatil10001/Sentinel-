@@ -1,0 +1,30 @@
+2026-09-17T01:23:54.943 [INFO] diagnostic_v2 - === PUMP-DUMP-2017-2020 Diagnostic v2 ===
+2026-09-17T01:23:54.945 [INFO] diagnostic_v2 - Purpose: verify whether 5 scrips are NSE-listed or BSE-only
+2026-09-17T01:23:54.945 [INFO] diagnostic_v2 - Environment: local machine, direct HTTP to NSE archives
+2026-09-17T01:23:54.945 [INFO] diagnostic_v2 - Log will be saved to: backtest/results/PUMP-DUMP-2017-2020_diagnostic_v2.log
+2026-09-17T01:23:54.946 [INFO] diagnostic_v2 - --- Step 1: connectivity check ---
+2026-09-17T01:24:01.090 [INFO] diagnostic_v2 - Calling fetch_bhavcopy(2018-06-15, series=EQ)
+2026-09-17T01:24:01.090 [INFO] data.ingest.nse_bhavcopy - Fetching bhavcopy from https://archives.nseindia.com/content/historical/EQUITIES/2018/JUN/cm15JUN2018bhav.csv.zip
+2026-09-17T01:24:01.102 [DEBUG] urllib3.connectionpool - Starting new HTTPS connection (1): www.nseindia.com:443
+2026-09-17T01:24:01.291 [DEBUG] urllib3.connectionpool - https://www.nseindia.com:443 "GET / HTTP/1.1" 403 368
+2026-09-17T01:24:01.294 [WARNING] data.ingest.nse_bhavcopy - NSE homepage cookie handshake failed: 403 Client Error: Forbidden for url: https://www.nseindia.com/. Proceeding without session cookie — archive download may fail.
+2026-09-17T01:24:01.298 [DEBUG] urllib3.connectionpool - Starting new HTTPS connection (1): archives.nseindia.com:443
+2026-09-17T01:24:01.394 [DEBUG] urllib3.connectionpool - https://archives.nseindia.com:443 "GET /content/historical/EQUITIES/2018/JUN/cm15JUN2018bhav.csv.zip HTTP/1.1" 200 68237
+2026-09-17T01:24:01.508 [INFO] data.ingest.nse_bhavcopy - Bhavcopy parsed: 1494 EQ records for 2018-06-15
+2026-09-17T01:24:01.513 [INFO] data.ingest.nse_bhavcopy - Fetching delivery data from https://archives.nseindia.com/products/content/sec_deliverypos_15JUN2018.dat
+2026-09-17T01:24:01.515 [DEBUG] urllib3.connectionpool - Resetting dropped connection: www.nseindia.com
+2026-09-17T01:24:01.616 [DEBUG] urllib3.connectionpool - https://www.nseindia.com:443 "GET / HTTP/1.1" 200 23217
+2026-09-17T01:24:01.623 [DEBUG] data.ingest.nse_bhavcopy - NSE session cookies obtained for bhavcopy.
+2026-09-17T01:24:02.504 [DEBUG] urllib3.connectionpool - https://archives.nseindia.com:443 "GET /products/content/sec_deliverypos_15JUN2018.dat HTTP/1.1" 404 3538
+2026-09-17T01:24:02.506 [WARNING] data.ingest.resilience - [retry:_fetch_raw] HTTP 404 on attempt 1/4 — NON-RETRYABLE (not retrying). Error: Bhavcopy fetch failed for 'https://archives.nseindia.com/products/content/sec_deliverypos_15JUN2018.dat' (HTTP 404): NSE returned HTTP 404. For 403: IP reputation block — see docs/NSE_ACCESS_LIMITATIONS.md. For 404: non-trading day or archive not yet available.
+2026-09-17T01:24:02.506 [WARNING] data.ingest.nse_bhavcopy - Delivery file fetch failed (https://archives.nseindia.com/products/content/sec_deliverypos_15JUN2018.dat). Continuing without delivery data. Error: Bhavcopy fetch failed for 'https://archives.nseindia.com/products/content/sec_deliverypos_15JUN2018.dat' (HTTP 404): NSE returned HTTP 404. For 403: IP reputation block — see docs/NSE_ACCESS_LIMITATIONS.md. For 404: non-trading day or archive not yet available.
+2026-09-17T01:24:02.506 [INFO] diagnostic_v2 - SUCCESS: bhavcopy fetched. rows=1494, columns=['symbol', 'series', 'isin', 'open', 'high', 'low', 'close', 'volume', 'turnover', 'date', 'exchange']
+2026-09-17T01:24:02.509 [INFO] diagnostic_v2 - CONNECTIVITY CONFIRMED: RELIANCE found in bhavcopy (1 row)
+2026-09-17T01:24:02.509 [INFO] diagnostic_v2 - --- Step 2: scrip search ---
+2026-09-17T01:24:02.511 [INFO] diagnostic_v2 - Total unique symbols in bhavcopy: 1494
+2026-09-17T01:24:02.515 [INFO] diagnostic_v2 - NOT FOUND: MAURIUDYOG (tried ['MAURIUDYOG', 'MAURIA', 'MAURYA']). Partials in NSE: []
+2026-09-17T01:24:02.517 [INFO] diagnostic_v2 - NOT FOUND: 7NRRETAIL (tried ['7NRRETAIL', '7NR']). Partials in NSE: []
+2026-09-17T01:24:02.520 [INFO] diagnostic_v2 - NOT FOUND: GBLIND (tried ['GBLIND', 'GBL']). Partials in NSE: ['BIGBLOC', 'VAIBHAVGBL']
+2026-09-17T01:24:02.522 [INFO] diagnostic_v2 - NOT FOUND: VISHALFAB (tried ['VISHALFAB', 'VISHFAB']). Partials in NSE: []
+2026-09-17T01:24:02.525 [INFO] diagnostic_v2 - NOT FOUND: DARJROPE (tried ['DARJROPE', 'DARJROPEWAY']). Partials in NSE: []
+2026-09-17T01:24:02.526 [INFO] diagnostic_v2 - --- Diagnostic complete ---
