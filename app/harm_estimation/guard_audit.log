@@ -1,0 +1,16 @@
+2026-09-16T21:38:40.511Z | event=ALLOWED_SEBI_CONFIRMED | instrument_id='KAVIT' | case_id='KIL-2019' | bypass_requested=False
+2026-09-16T21:38:40.516Z | event=ALLOWED_SEBI_CONFIRMED | instrument_id='MAURIUDYOG' | case_id='PUMP-DUMP-2017-2020' | bypass_requested=False
+2026-09-16T21:38:40.520Z | event=ALLOWED_SYNTHETIC | instrument_id='RELIANCE' | case_id='SYNTHETIC_PUMP_RELIANCE_2021_VALIDATION' | bypass_requested=False
+2026-09-16T21:38:40.524Z | event=ALLOWED_SYNTHETIC | instrument_id='TESTINST' | case_id='SYNTHETIC_MY_NEW_TEST_SCENARIO' | bypass_requested=False
+2026-09-16T21:38:40.528Z | event=REFUSED | instrument_id='WIPRO' | case_id='SOME_RANDOM_CASE' | bypass_requested=False
+2026-09-16T21:38:40.531Z | event=REFUSED | instrument_id='TCS' | case_id='FAKE_CASE_ID' | bypass_requested=False
+2026-09-16T21:38:40.794Z | event=ALLOWED_SEBI_CONFIRMED | instrument_id='KAVIT' | case_id='KIL-2019' | bypass_requested=False
+2026-09-16T21:38:40.799Z | event=ALLOWED_SEBI_CONFIRMED | instrument_id='MAURIUDYOG' | case_id='PUMP-DUMP-2017-2020' | bypass_requested=False
+2026-09-16T21:40:29.638Z | event=ALLOWED_SEBI_CONFIRMED | instrument_id='KAVIT' | case_id='KIL-2019' | bypass_requested=False
+2026-09-16T21:40:29.643Z | event=ALLOWED_SEBI_CONFIRMED | instrument_id='MAURIUDYOG' | case_id='PUMP-DUMP-2017-2020' | bypass_requested=False
+2026-09-16T21:40:29.646Z | event=ALLOWED_SYNTHETIC | instrument_id='RELIANCE' | case_id='SYNTHETIC_PUMP_RELIANCE_2021_VALIDATION' | bypass_requested=False
+2026-09-16T21:40:29.650Z | event=ALLOWED_SYNTHETIC | instrument_id='TESTINST' | case_id='SYNTHETIC_MY_NEW_TEST_SCENARIO' | bypass_requested=False
+2026-09-16T21:40:29.654Z | event=REFUSED | instrument_id='WIPRO' | case_id='SOME_RANDOM_CASE' | bypass_requested=False
+2026-09-16T21:40:29.658Z | event=REFUSED | instrument_id='TCS' | case_id='FAKE_CASE_ID' | bypass_requested=False
+2026-09-16T21:40:29.941Z | event=ALLOWED_SEBI_CONFIRMED | instrument_id='KAVIT' | case_id='KIL-2019' | bypass_requested=False
+2026-09-16T21:40:29.945Z | event=ALLOWED_SEBI_CONFIRMED | instrument_id='MAURIUDYOG' | case_id='PUMP-DUMP-2017-2020' | bypass_requested=False

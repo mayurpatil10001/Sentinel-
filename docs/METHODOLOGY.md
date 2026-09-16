@@ -1,7 +1,7 @@
 # Sentinel — Detection Methodology
 
-**Version**: 0.2.0-SAMPLE  
-**Date**: 2026-09-16  
+**Version**: 0.3.0-SAMPLE  
+**Date**: 2026-09-17  
 **Environment**: Non-production, synthetic/sample data only  
 **Contact**: Internal surveillance team
 
@@ -371,3 +371,238 @@ The system cannot auto-file with SEBI.
    methodology in coordinated pump calibration
 9. SEBI Adjudication Order: Kavit Industries Limited, Feb 28 2025
 10. SEBI Interim Order: Mauria Udyog / Hanif Shekh cluster, Jun 19 2023
+11. MacKinlay, A.C. (1997). Event Studies in Economics and Finance.
+    Journal of Economic Literature, 35(1), 13-39.
+12. Brown, S.J. & Warner, J.B. (1985). Using daily stock returns: The case of
+    event studies. Journal of Financial Economics, 14(1), 3-31.
+
+---
+
+## 9. Harm Quantification / Restitution Engine
+
+### 9.1 Purpose
+
+Given a confirmed manipulation window (real SEBI adjudicated case or clearly
+labeled synthetic scenario) plus daily price/volume data, the harm estimation
+module estimates:
+1. What price the instrument *likely* would have followed without the manipulation
+   (the **counterfactual price path**).
+2. The **monetary harm** to real trades executed at the inflated/deflated price
+   during the event window.
+
+> [!IMPORTANT]
+> This module is a **downstream research tool**, not a detector. It only runs
+> after manipulation has been legally confirmed (SEBI adjudication order) or is
+> labeled synthetic. It does NOT make new allegations.
+
+---
+
+### 9.2 Methodology: Market-Model Event Study
+
+**Primary reference**: MacKinlay (1997) — the canonical review of event-study
+methodology as practiced in financial economics.  
+**Test statistics**: Brown & Warner (1985) — establishes the t-statistic form
+used here for daily-return data, including the forecast-error variance adjustment.
+
+#### Estimation Window
+
+Standard practice per MacKinlay (1997, p. 15) uses 120–250 trading days before
+the event window for OLS parameter estimation. Sentinel defaults to **200 trading
+days** and documents any deviation.
+
+> [!IMPORTANT]
+> The estimation window must not overlap the event (manipulation) window.
+> Mixing contaminated event-period data into the estimation window would bias
+> the alpha/beta estimates and understate the abnormal return — a known
+> methodological failure mode called "contaminated estimation window."
+
+#### Market Model (OLS Regression)
+
+The market model assumes a linear relationship between stock and market returns:
+
+```
+R_stock(t) = alpha + beta × R_market(t) + epsilon(t)
+```
+
+Fitted by **OLS** (statsmodels) over the estimation window. Parameters:
+- `alpha` — stock-specific drift (estimated, not assumed zero)
+- `beta` — market sensitivity (estimated, not assumed 1.0)
+- `sigma_hat` — OLS residual standard deviation (used in CI calculation)
+
+#### Abnormal Return
+
+```
+AR(t) = R_stock(t) – (alpha_hat + beta_hat × R_market(t))
+```
+
+For each day in the event window. Uses **actual** market returns during the
+event window — not an assumed-flat or assumed-zero market, as that would
+attribute all market-driven price changes to manipulation.
+
+#### Cumulative Abnormal Return (CAR)
+
+```
+CAR = sum(AR(t))  for t in event window
+```
+
+#### Confidence Interval (Brown & Warner 1985)
+
+The variance of CAR is estimated following Brown & Warner (1985, Eq. 5):
+
+```
+Var(CAR) = T_event × sigma_hat² × (1 + 1/T_est
+           + sum((R_mkt_event(t) – R_mkt_bar)²) / SS_mkt_est)
+```
+
+Where:
+- `T_event` = event window length (trading days)
+- `T_est` = estimation window length
+- `R_mkt_bar` = mean market return in estimation window
+- `SS_mkt_est` = sum of squared market return deviations in estimation window
+
+The third term corrects for **forecast-period uncertainty**: if market returns
+during the event window deviate substantially from estimation-period returns,
+the out-of-sample forecast error is larger.
+
+t-statistic:
+```
+t = CAR / sqrt(Var(CAR))     [df = T_est - 2]
+```
+
+95% Confidence Interval:
+```
+CI = CAR ± t_crit(df=T_est-2, p=0.025) × sqrt(Var(CAR))
+```
+
+> [!WARNING]
+> **Single-instrument test only.** Cross-sectional aggregation (portfolio event
+> studies) would require additional adjustments for event-clustering and
+> cross-sectional dependence per MacKinlay (1997, Section 4.4). This module
+> is currently single-instrument only — explicitly disclosed.
+
+#### Counterfactual Price Path
+
+The counterfactual price path reconstructs what the stock *likely* would have
+traded at without the manipulation:
+
+```
+P_cf(t) = P_pre_event × product((1 + E[R(s)]) for s in [1..t])
+```
+
+where `E[R(s)] = alpha_hat + beta_hat × R_mkt(s)` is the market-model
+predicted return for each event-window day.
+
+The CI bounds on the CAR are propagated to the price path, yielding
+`P_cf_low(t)` and `P_cf_high(t)` for each day — so every harm figure
+derived from the path is a **range**, not a point estimate.
+
+---
+
+### 9.3 Per-Trade Harm Estimation
+
+Given a counterfactual price path and a set of trade records:
+
+**Buyer harm** (stock was inflated by manipulation, buyer overpaid):
+```
+harm(trade) = (actual_price – cf_price) × quantity
+```
+
+**Seller harm** (stock was deflated by manipulation, seller under-received):
+```
+harm(trade) = (cf_price – actual_price) × quantity
+```
+
+Both buyer and seller harm are computed as ranges:
+```
+harm_low  = harm at worst plausible counterfactual (CI bound)
+harm_high = harm at best plausible counterfactual (CI bound)
+```
+
+Aggregated to account level and instrument level.
+
+> [!CAUTION]
+> **HARD RULE — NEVER PRESENT A POINT ESTIMATE WITHOUT ITS RANGE**:  
+> Every output from this module carries `harm_low`, `harm_central`, and  
+> `harm_high` with equal visual weight. The central estimate is not  
+> "the answer" — it is the midpoint of a statistically derived range.  
+> SEBI's own disgorgement calculations use point estimates because they  
+> have the full transaction record plus independent expert review. This  
+> module does not.
+
+---
+
+### 9.4 Guard System
+
+The module includes a hard-coded allow-list (`app/harm_estimation/guards.py`)
+that prevents execution against any instrument not on one of two lists:
+
+1. **SEBI-confirmed cases** — instruments where SEBI has issued an
+   adjudication/final order legally confirming manipulation occurred.
+   Running harm estimation here answers "how much?" not "did it happen?"
+   (the legal order has already answered the latter).
+
+2. **Explicitly-labeled synthetic scenarios** — scenario IDs must carry
+   the `SYNTHETIC_` prefix. This prefix appears in every output, so it can
+   never be confused with a finding about a real entity.
+
+Every call — including refusals — is written to `app/harm_estimation/guard_audit.log`
+for a paper trail. The guard cannot be silently bypassed.
+
+---
+
+### 9.5 Validation Status (Honest)
+
+| Validation Type | Status |
+|---|---|
+| Synthetic known-answer: injected CAR=+30% recovered within 95% CI | ✅ Verified (tests/test_harm_estimation.py) |
+| Synthetic: large effect correctly flagged as statistically significant | ✅ Verified |
+| Synthetic: zero-injection produces CAR ≈ 0 (no false detection) | ✅ Verified |
+| CI widens with longer event window (Brown & Warner scaling) | ✅ Verified |
+| Guard: SEBI confirmed cases allowed | ✅ Verified |
+| Guard: unlisted instruments refused | ✅ Verified |
+| Guard: bypass_guard=True is logged, not silent | ✅ Verified |
+| Real case: KIL-2019 (BSE scrip) | ⚠️ Guard-approved; execution blocked by BSE data gap |
+| Real case: PUMP-DUMP-2017-2020 (BSE scrip) | ⚠️ Guard-approved; execution blocked by BSE data gap |
+| Production validation on real exchange data | ❌ Not done — requires BSE bhavcopy fetcher |
+
+> [!WARNING]
+> **BSE Data Gap — Real Cases Cannot Currently Be Run**:  
+> Both confirmed SEBI cases (KIL-2019, PUMP-DUMP-2017-2020) involve instruments
+> that are absent from the NSE bhavcopy feed (log-verified by  
+> `backtest/results/KIL-2019_diagnostic_v2.log` and  
+> `backtest/results/PUMP-DUMP-2017-2020_diagnostic_v2.log`). The harm estimation
+> module requires a historical price series — which means real-case execution
+> requires BSE bhavcopy access, which is not yet in the Sentinel pipeline.  
+>  
+> The methodology has been validated on synthetic data only. The module will
+> fail loudly (not silently) when given an empty price series.
+
+---
+
+### 9.6 Microstructure Warning
+
+Thinly-traded instruments (< 50,000 shares/day average) are subject to
+bid/ask bounce, which inflates observed return variance and biases CAR
+estimates upward. Per MacKinlay (1997, p. 24):
+
+> "thin-stock results should be interpreted with caution due to
+> non-synchronous trading and bid/ask effects."
+
+The module sets `microstructure_warning=True` for illiquid instruments and
+discloses this in every output. The CI is wider (more conservative) for
+illiquid instruments due to higher sigma_hat — this is a feature, not a bug.
+
+---
+
+### 9.7 What This Module Does NOT Do
+
+- Does **not** make new manipulation allegations.
+- Does **not** produce a SEBI-ready disgorgement figure — SEBI's own
+  disgorgement uses the full account-level transaction record, which this
+  pipeline does not have for historical cases.
+- Does **not** run against live/currently-listed instruments not on the
+  allow-list.
+- Does **not** produce a point estimate without a confidence interval.
+- Does **not** assume market returns were flat during the manipulation
+  period — actual market index returns are always used in AR computation.
+
