@@ -1,0 +1,51 @@
+# Sentinel .gitignore
+# ====================
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# SQLite databases (dev only)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Fyers credentials and tokens (NEVER commit these)
+.env
+.fyers_token.json
+
+# Logs
+logs/
+*.log
+
+# Data cache
+data/cache/
+*.parquet
+
+# OS
+.DS_Store
+Thumbs.db

@@ -87,8 +87,41 @@ def get_data_sources():
         cb_info(option_chain_circuit, "NSE Option Chain",       "Live option chain OI + Greeks (market-hours only)"),
     ]
 
-    # Broker API sources: not yet circuit-breaker-wrapped as module singletons.
-    # Report their real integration status rather than faking a "green" status.
+    # ── Fyers API v3 — LIVE integration ──────────────────────────────────────
+    # Reports real token validity and circuit breaker state from the live adapter.
+    try:
+        from data.ingest.fyers_stream import get_fyers_adapter
+        fyers_status = get_fyers_adapter().get_connection_status()
+        sources.append({
+            "source": "Fyers API v3",
+            "description": (
+                "Live intraday quotes, market depth, option chain, historical OHLCV "
+                "(single-account order data only — not market-wide order book)"
+            ),
+            "circuit_state": fyers_status.get("circuit_state", "UNKNOWN"),
+            "consecutive_failures": None,
+            "failure_threshold": 5,
+            "cooldown_seconds": 30,
+            "last_successful_fetch": None,
+            "degraded": not fyers_status.get("token_valid", False),
+            "token_valid": fyers_status.get("token_valid", False),
+            "token_date": fyers_status.get("token_date"),
+            "app_id": fyers_status.get("app_id"),
+            "note": (
+                "Token valid today" if fyers_status.get("token_valid")
+                else "Token missing or stale — call POST /api/live/authenticate to reconnect"
+            ),
+        })
+    except Exception as fyers_exc:
+        sources.append({
+            "source": "Fyers API v3",
+            "description": "Live market data (quotes, depth, option chain)",
+            "circuit_state": "ERROR",
+            "degraded": True,
+            "note": f"Could not load Fyers adapter: {fyers_exc}",
+        })
+
+    # Breeze + Kite: legacy stubs, not circuit-breaker-integrated
     sources.append({
         "source": "Breeze API (ICICI)",
         "description": "Historical options OI via broker API",
@@ -98,8 +131,8 @@ def get_data_sources():
         "cooldown_seconds": None,
         "last_successful_fetch": None,
         "degraded": True,
-        "note": "Breeze API integration present in broker_order_stream.py but not yet wrapped "
-                "in a circuit breaker singleton. Status cannot be reported in real time.",
+        "note": "Breeze API integration present in broker_order_stream.py but not yet "
+                "wrapped in a circuit breaker singleton.",
     })
     sources.append({
         "source": "Kite Connect (Zerodha)",
@@ -110,8 +143,8 @@ def get_data_sources():
         "cooldown_seconds": None,
         "last_successful_fetch": None,
         "degraded": True,
-        "note": "Kite integration present in broker_order_stream.py but not yet wrapped "
-                "in a circuit breaker singleton. Status cannot be reported in real time.",
+        "note": "Kite integration present in broker_order_stream.py but not yet "
+                "wrapped in a circuit breaker singleton.",
     })
 
     any_degraded = any(s["degraded"] for s in sources if s["circuit_state"] != "NOT_INTEGRATED")

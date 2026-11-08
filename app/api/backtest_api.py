@@ -22,7 +22,7 @@ def _read_result_files() -> list[dict[str, Any]]:
     results = []
     for f in sorted(_BACKTEST_RESULTS.glob("*_result.json")):
         try:
-            data = json.loads(f.read_text(encoding="utf-8"))
+            data = json.loads(f.read_text(encoding="utf-8-sig"))
             data["_source_file"] = f.name
             results.append(data)
         except Exception as exc:
@@ -35,7 +35,7 @@ def _read_negative_controls() -> dict[str, Any]:
     if not nc_file.exists():
         return {"error": "negative_controls.json not found"}
     try:
-        return json.loads(nc_file.read_text(encoding="utf-8"))
+        return json.loads(nc_file.read_text(encoding="utf-8-sig"))
     except Exception as exc:
         return {"error": str(exc)}
 

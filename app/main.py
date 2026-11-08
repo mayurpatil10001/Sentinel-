@@ -13,11 +13,19 @@ Routers:
     /api/audit
     /api/system
     /api/backtest
+    /api/live           (Fyers live market data — quotes, depth, option chain)
 
 Static:
     /dashboard/*  → dashboard/static/
 """
 import pathlib
+
+# Load .env file if present (before any other imports that read env vars)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=pathlib.Path(__file__).parent.parent / ".env", override=False)
+except ImportError:
+    pass  # python-dotenv not installed; env vars must be set externally
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,6 +38,7 @@ from app.api.alerts_ext import router as alerts_ext_router
 from app.api.audit import router as audit_router
 from app.api.system import router as system_router
 from app.api.backtest_api import router as backtest_router
+from app.api.live_market import router as live_router
 
 app = FastAPI(
     title="Sentinel — Market Surveillance Platform",
@@ -68,6 +77,7 @@ app.include_router(alerts_ext_router)
 app.include_router(audit_router)
 app.include_router(system_router)
 app.include_router(backtest_router)
+app.include_router(live_router)      # Fyers live market data
 
 # ── Dashboard static files ─────────────────────────────────────────────────────
 _DASHBOARD_STATIC = pathlib.Path(__file__).parent.parent / "dashboard" / "static"

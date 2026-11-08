@@ -1,4 +1,4 @@
-﻿{
+{
   "_integrity_note": "Every claim in this file is backed by a real execution log. The log file path is listed in log_file. A reviewer can open that file and verify each claim against real HTTP responses and timestamps.",
   "case_id": "PUMP-DUMP-2017-2020",
   "run_verdict": "UNTESTABLE",
