@@ -51,7 +51,7 @@ APP_ID = os.environ.get("FYERS_APP_ID", "S08D2750W7-100")
 SECRET_ID = os.environ.get("FYERS_SECRET_ID", "O06AUI9GFX")
 REDIRECT_URI = os.environ.get(
     "FYERS_REDIRECT_URI",
-    "https://trade.fyers.in/api-login/redirect-uri/index.html",
+    "https://mayurbpatil.in",
 )
 
 # Token stored locally (never committed — add to .gitignore)
@@ -252,4 +252,5 @@ if __name__ == "__main__":
     except FyersAuthError as e:
         print(f"\n❌ Authentication failed: {e}")
         sys.exit(1)
+
 

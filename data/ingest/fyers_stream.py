@@ -408,7 +408,7 @@ class FyersMarketDataAdapter:
             return False
         try:
             client = self._get_client()
-            resp = client.get_profile({})
+            resp = client.get_profile()
             return resp.get("s") == "ok"
         except Exception:
             return False

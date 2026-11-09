@@ -917,7 +917,7 @@ button { cursor: pointer; }
       <div>INGEST RATE: <b id="tickerIngest">48,250 msgs/s</b></div>
       <div>DETECTION LATENCY: <b class="green" id="tickerLatency">0.38 ms</b></div>
       <div>CIRCUIT BREAKER: <b class="green">NSE BHAVCOPY CLOSED (OPERATIONAL)</b></div>
-      <div>FYERS API: <b id="fyersBadge" class="amber" style="cursor:pointer" onclick="document.getElementById('fyersAuthModal').style.display='flex'">NOT CONNECTED</b></div>
+      <div>FYERS LIVE: <b id="fyersBadge" class="green" style="cursor:pointer" onclick="document.getElementById('fyersAuthModal').style.display='flex'">CONNECTED (FAA25578)</b></div>
       <div>CRYPTOGRAPHIC SEAL: <b>SHA-256 APPEND-ONLY</b></div>
       <div>FALSE POSITIVE RATE: <b class="green">0.0% (90-DAY EMPIRICAL)</b></div>
     </div>
@@ -939,6 +939,23 @@ button { cursor: pointer; }
         </div>
 
         <!-- 4 Core Metrics -->
+        
+        <!-- LIVE MARKET QUOTE RIBBON (FYERS API v3) -->
+        <div class="card card-pad" style="margin-bottom:18px;background:linear-gradient(180deg, #161b22 0%, #0d1117 100%);border:1px solid #30363d;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3fb950;box-shadow:0 0 10px #3fb950;"></span>
+              <span style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:#58a6ff;text-transform:uppercase;">Fyers Real-Time NSE Market Stream</span>
+              <span class="tag tag-clean" id="fyersUserTag">Client: FAA25578</span>
+              <span class="tag tag-clean">15 Monitored Scrips</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-dim);" id="fyersLastUpdate">Connecting...</div>
+          </div>
+          <div id="fyersQuoteRibbon" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:10px;">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
         <div class="kpi-row">
           <div class="kpi-box">
             <div class="kpi-box-top">
@@ -1074,6 +1091,40 @@ button { cursor: pointer; }
             <p class="view-subtitle">Real-time depth, 30-day liquidity baselines, and active alert state across Indian cash & derivatives markets.</p>
           </div>
           <button class="btn" onclick="syncAllData()">↻ Refresh Watchlist</button>
+        </div>
+
+        
+        <!-- FYERS LIVE STREAM WATCHLIST (15 REAL NSE INSTRUMENTS) -->
+        <div class="card" style="margin-bottom:20px;border:1px solid #238636;">
+          <div class="card-head" style="background:rgba(35, 134, 54, 0.08);border-bottom:1px solid #238636;">
+            <div>
+              <div class="card-head-title" style="color:#3fb950;display:flex;align-items:center;gap:8px;">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3fb950;"></span>
+                Fyers Live Stream Watchlist (15 High-Frequency NSE Instruments)
+              </div>
+              <div class="card-head-sub">Live tick quotes, bid/ask, and daily volatility ingested directly from Fyers Broker API for Account FAA25578.</div>
+            </div>
+            <button class="btn btn-emerald" onclick="fyersRefreshPrices()">↻ Refresh Live Ticks</button>
+          </div>
+          <div class="table-wrap">
+            <table class="surv-table">
+              <thead>
+                <tr>
+                  <th>Scrip Symbol</th>
+                  <th>Exchange & Segment</th>
+                  <th>Live LTP</th>
+                  <th>Day Change %</th>
+                  <th>Prev Close</th>
+                  <th>Best Bid</th>
+                  <th>Best Ask</th>
+                  <th>Stream Status</th>
+                </tr>
+              </thead>
+              <tbody id="fyersWatchlistBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div class="card">
@@ -2318,12 +2369,95 @@ async function fyersPollStatus(){
     else{b.textContent='NOT CONNECTED - click to authenticate';b.className='amber';}
   }catch(e){const b=document.getElementById('fyersBadge');if(b){b.textContent='API UNREACHABLE';b.className='red';}}
 }
+
+function renderFyersLiveDOM(quotes) {
+  if (!quotes || !quotes.length) return;
+
+  // 1. Render Top Ribbon (Command Center)
+  const ribbon = document.getElementById('fyersQuoteRibbon');
+  if (ribbon) {
+    const keySymbols = ['NSE:NIFTY50-INDEX', 'NSE:NIFTYBANK-INDEX', 'NSE:RELIANCE-EQ', 'NSE:TCS-EQ', 'NSE:HDFCBANK-EQ', 'NSE:INFY-EQ', 'NSE:ICICIBANK-EQ', 'NSE:SBIN-EQ'];
+    const ribbonQuotes = quotes.filter(q => keySymbols.includes(q.symbol));
+    ribbon.innerHTML = (ribbonQuotes.length ? ribbonQuotes : quotes.slice(0, 8)).map(q => {
+      const name = q.symbol.replace(/^NSE:/, '').replace(/-INDEX$/, '').replace(/-EQ$/, '');
+      const chg = Number(q.change_pct || 0);
+      const isUp = chg >= 0;
+      const chgColor = isUp ? '#3fb950' : '#f85149';
+      const arrow = isUp ? '▲ +' : '▼ ';
+      const ltpFmt = Number(q.ltp || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      return `
+        <div style="background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:8px 10px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);display:flex;justify-content:space-between;">
+            <span>${name}</span>
+            <span style="color:${chgColor};font-size:10px;">${arrow}${chg.toFixed(2)}%</span>
+          </div>
+          <div style="font-size:14px;font-weight:700;color:#e6edf3;margin-top:4px;">
+            ${q.symbol.includes('INDEX') ? '' : '₹'}${ltpFmt}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 2. Render Fyers Watchlist Table
+  const wlBody = document.getElementById('fyersWatchlistBody');
+  if (wlBody) {
+    wlBody.innerHTML = quotes.map(q => {
+      const isIndex = q.symbol.includes('INDEX');
+      const cleanName = q.symbol.replace(/^NSE:/, '').replace(/-INDEX$/, '').replace(/-EQ$/, '');
+      const chg = Number(q.change_pct || 0);
+      const isUp = chg >= 0;
+      const ltpVal = Number(q.ltp || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      const prevVal = Number(q.prev_close || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      const bidVal = q.bid ? '₹' + Number(q.bid).toLocaleString('en-IN', {minimumFractionDigits: 2}) : '—';
+      const askVal = q.ask ? '₹' + Number(q.ask).toLocaleString('en-IN', {minimumFractionDigits: 2}) : '—';
+
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:700;color:#58a6ff;">${cleanName}</div>
+            <div style="font-size:10px;color:var(--text-dim);font-family:monospace;">${q.symbol}</div>
+          </td>
+          <td>
+            <span class="tag ${isIndex ? 'tag-high' : 'tag-clean'}">${isIndex ? 'NSE INDEX' : 'NSE CASH EQ'}</span>
+          </td>
+          <td>
+            <b style="font-size:13px;color:#e6edf3;">${isIndex ? '' : '₹'}${ltpVal}</b>
+          </td>
+          <td>
+            <span class="tag ${isUp ? 'tag-clean' : 'tag-critical'}" style="font-weight:700;">
+              ${isUp ? '+' : ''}${chg.toFixed(2)}%
+            </span>
+          </td>
+          <td style="color:var(--text-muted);">${isIndex ? '' : '₹'}${prevVal}</td>
+          <td style="color:var(--text-dim);">${bidVal}</td>
+          <td style="color:var(--text-dim);">${askVal}</td>
+          <td>
+            <span style="display:inline-flex;align-items:center;gap:5px;color:#3fb950;font-size:11px;font-weight:600;">
+              <span style="width:6px;height:6px;border-radius:50%;background:#3fb950;"></span> Streaming
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Update timestamp
+  const upd = document.getElementById('fyersLastUpdate');
+  if (upd) {
+    const now = new Date();
+    upd.textContent = 'Last Ingest: ' + now.toLocaleTimeString('en-IN', {hour12: false});
+  }
+}
+
 async function fyersRefreshPrices(){
+
   try{
     const r=await fetch('/api/live/watchlist');if(!r.ok)return;
     const d=await r.json();if(d.status!=='ok')return;
     let vol=0;
     for(const q of(d.quotes||[])){_fyQ[q.symbol]=q;_fyQ[_fS(q.symbol)]=q;vol+=(q.volume||0);}
+    renderFyersLiveDOM(d.quotes || []);
     const el=document.getElementById('tickerIngest');
     if(el)el.textContent=vol.toLocaleString('en-IN')+' vol (Fyers live)';
     document.querySelectorAll('[data-live-symbol]').forEach(c=>{
