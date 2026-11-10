@@ -1,36 +1,24 @@
 """
-Fyers API v3 Authentication Helper
-====================================
-Manages the OAuth2 token lifecycle for the Fyers broker API.
+data/ingest/fyers_auth.py
+==========================
+Fyers API v3 Authentication Helper.
 
-ARCHITECTURE NOTE
------------------
-Fyers provides single-account visibility only:
-  - Live intraday quotes for any NSE/BSE symbol  ← NEW via Fyers
-  - Your account's orders, positions, holdings   ← Account-level only
-  - Market depth / best bid-ask (5 levels)       ← NEW via Fyers
-  - Option chain snapshots                       ← NEW via Fyers
-  - Historical OHLCV (day/intraday)              ← Supplementary to NSE bhavcopy
+CREDENTIAL LOADING
+------------------
+All credentials are read exclusively from environment variables or a .env
+file at the repo root. There are NO hardcoded fallback values. If a required
+variable is missing, FyersAuthError is raised at the first API call so the
+failure is explicit and logged, rather than silently using a stale value.
 
-It does NOT provide:
-  - Other participants' orders (market-wide order book)
-  - Exchange surveillance feeds (SEBI-only access)
+Required env vars:
+  FYERS_APP_ID       — your Fyers API app ID (from myapi.fyers.in)
+  FYERS_SECRET_ID    — your Fyers API secret (rotate immediately if leaked)
+  FYERS_REDIRECT_URI — the redirect URI registered in your Fyers app
 
 TOKEN REFRESH
 -------------
-Fyers access tokens expire daily. You must run auth flow once per trading day
-(before 09:00 IST) using `generate_auth_url()` → browser → `exchange_code_for_token()`.
-
-USAGE
------
-    from data.ingest.fyers_auth import FyersAuthManager
-    auth = FyersAuthManager()
-    # First time / daily refresh:
-    url = auth.generate_auth_url()
-    # Open URL in browser, login, copy the full redirect URL
-    token = auth.exchange_code_for_token(auth_code="<paste code from redirect URL>")
-    # Subsequent calls:
-    fyers_client = auth.get_fyers_client()
+Fyers access tokens expire daily. Run auth flow once per trading day
+(before 09:00 IST): generate_auth_url() → browser → exchange_code_for_token().
 """
 
 import hashlib
@@ -45,16 +33,24 @@ from fyers_apiv3 import fyersModel
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Config — read from environment variables first, fall back to defaults
+# Config — read from environment ONLY. No hardcoded fallbacks.
 # ---------------------------------------------------------------------------
-APP_ID = os.environ.get("FYERS_APP_ID", "S08D2750W7-100")
-SECRET_ID = os.environ.get("FYERS_SECRET_ID", "O06AUI9GFX")
-REDIRECT_URI = os.environ.get(
-    "FYERS_REDIRECT_URI",
-    "https://mayurbpatil.in",
-)
+# python-dotenv is loaded by app/main.py at startup. For scripts run outside
+# the FastAPI context, callers should load_dotenv() themselves.
 
-# Token stored locally (never committed — add to .gitignore)
+def _require_env(name: str) -> str:
+    """Return env var value or raise FyersAuthError if missing."""
+    val = os.environ.get(name, "").strip()
+    if not val:
+        raise FyersAuthError(
+            f"Environment variable {name!r} is not set. "
+            f"Copy .env.example to .env and fill in your Fyers credentials. "
+            f"See README for setup instructions."
+        )
+    return val
+
+
+# Token stored locally (never committed — in .gitignore)
 _TOKEN_FILE = Path(__file__).parent.parent.parent / ".fyers_token.json"
 
 
@@ -67,78 +63,50 @@ class FyersAuthManager:
 
     def __init__(
         self,
-        app_id: str = APP_ID,
-        secret_id: str = SECRET_ID,
-        redirect_uri: str = REDIRECT_URI,
+        app_id: str | None = None,
+        secret_id: str | None = None,
+        redirect_uri: str | None = None,
         token_file: Path = _TOKEN_FILE,
     ):
-        self.app_id = app_id
-        self.secret_id = secret_id
-        self.redirect_uri = redirect_uri
-        self.token_file = token_file
+        # Credentials: use constructor args (for testing) or env vars
+        self._app_id       = app_id       or _require_env("FYERS_APP_ID")
+        self._secret_id    = secret_id    or _require_env("FYERS_SECRET_ID")
+        self._redirect_uri = redirect_uri or _require_env("FYERS_REDIRECT_URI")
+        self._token_file   = token_file
 
     # ------------------------------------------------------------------
     # Auth URL generation
     # ------------------------------------------------------------------
     def generate_auth_url(self) -> str:
-        """
-        Generate the Fyers OAuth2 login URL.
-
-        Returns:
-            str: URL to open in a browser for user login.
-
-        Steps after getting the URL:
-            1. Open URL in browser.
-            2. Login with your Fyers credentials.
-            3. After redirect, copy the `auth_code` query parameter from the URL.
-            4. Pass it to `exchange_code_for_token(auth_code=...)`.
-        """
-        session = fyersModel.SessionModel(
-            client_id=self.app_id,
-            redirect_uri=self.redirect_uri,
-            response_type="code",
-            state="sentinel_auth",
-            secret_key=self.secret_id,
-            grant_type="authorization_code",
+        """Return the Fyers OAuth2 login URL for the user to open in a browser."""
+        from urllib.parse import quote
+        base = "https://api-t1.fyers.in/api/v3/generate-authcode"
+        return (
+            f"{base}?client_id={self._app_id}"
+            f"&redirect_uri={quote(self._redirect_uri, safe='')}"
+            f"&response_type=code&state=sentinel_auth"
         )
-        auth_url: str = session.generate_authcode()
-        logger.info("Fyers auth URL generated. Open in browser to authenticate.")
-        return auth_url
 
     # ------------------------------------------------------------------
     # Token exchange
     # ------------------------------------------------------------------
     def exchange_code_for_token(self, auth_code: str) -> str:
-        """
-        Exchange an auth code (from the redirect URL) for an access token.
-
-        Args:
-            auth_code: The `auth_code` query parameter from the Fyers redirect URL.
-
-        Returns:
-            str: The access token string.
-
-        Raises:
-            FyersAuthError: If the token exchange fails.
-        """
+        """Exchange the OAuth2 auth code for an access token and persist it."""
         session = fyersModel.SessionModel(
-            client_id=self.app_id,
-            redirect_uri=self.redirect_uri,
+            client_id=self._app_id,
+            secret_key=self._secret_id,
+            redirect_uri=self._redirect_uri,
             response_type="code",
-            state="sentinel_auth",
-            secret_key=self.secret_id,
             grant_type="authorization_code",
         )
         session.set_token(auth_code)
         response = session.generate_token()
         if response.get("s") != "ok" or "access_token" not in response:
-            raise FyersAuthError(
-                f"Token exchange failed: {response.get('message', response)}"
-            )
-        access_token: str = response["access_token"]
-        self._save_token(access_token)
-        logger.info("Fyers access token obtained and saved to %s", self.token_file)
-        return access_token
+            raise FyersAuthError(f"Token exchange failed: {response}")
+        token = response["access_token"]
+        self._save_token(token)
+        logger.info("Fyers token exchanged and saved successfully.")
+        return token
 
     # ------------------------------------------------------------------
     # Token persistence
@@ -147,110 +115,77 @@ class FyersAuthManager:
         payload = {
             "access_token": access_token,
             "date": date.today().isoformat(),
-            "app_id": self.app_id,
+            # Store app_id so we can detect token/app_id mismatch on load
+            "app_id": self._app_id,
         }
-        self.token_file.write_text(json.dumps(payload, indent=2))
-        logger.debug("Token saved to %s", self.token_file)
+        self._token_file.write_text(json.dumps(payload, indent=2))
+        logger.debug("Token saved to %s", self._token_file)
 
-    def load_token(self) -> str:
-        """
-        Load a previously saved access token.
-
-        Returns:
-            str: The saved access token.
-
-        Raises:
-            FyersAuthError: If token file is missing or stale (not today's date).
-        """
-        if not self.token_file.exists():
-            raise FyersAuthError(
-                f"No token file found at {self.token_file}. "
-                "Run generate_auth_url() and exchange_code_for_token() first."
-            )
+    def _load_token(self) -> dict | None:
+        if not self._token_file.exists():
+            return None
         try:
-            payload = json.loads(self.token_file.read_text())
-        except (json.JSONDecodeError, OSError) as exc:
-            raise FyersAuthError(f"Cannot read token file: {exc}") from exc
-
-        token_date = payload.get("date", "")
-        today = date.today().isoformat()
-        if token_date != today:
-            raise FyersAuthError(
-                f"Fyers token is stale (dated {token_date}, today is {today}). "
-                "Re-authenticate: run generate_auth_url() and exchange_code_for_token()."
-            )
-        return payload["access_token"]
+            data = json.loads(self._token_file.read_text())
+            return data
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to load token file: %s", e)
+            return None
 
     def is_token_valid(self) -> bool:
-        """Return True if a fresh (today's) token exists."""
+        """Return True if a token exists and was issued today."""
+        data = self._load_token()
+        if not data:
+            return False
         try:
-            self.load_token()
-            return True
-        except FyersAuthError:
+            token_date = date.fromisoformat(data["date"])
+            return token_date == date.today()
+        except (KeyError, ValueError):
             return False
 
-    # ------------------------------------------------------------------
-    # FyersModel client
-    # ------------------------------------------------------------------
+    def get_access_token(self) -> str:
+        """Return the access token or raise FyersAuthError."""
+        data = self._load_token()
+        if not data:
+            raise FyersAuthError(
+                "No Fyers token found. Run the auth flow: "
+                "open the login URL in a browser, then run get_token.py."
+            )
+        token_date = data.get("date", "")
+        if token_date != date.today().isoformat():
+            raise FyersAuthError(
+                f"Fyers token is from {token_date}, not today ({date.today()}). "
+                "Re-run the auth flow to get a fresh token."
+            )
+        return data["access_token"]
+
     def get_fyers_client(self, log_path: str = "logs/") -> fyersModel.FyersModel:
-        """
-        Return an authenticated FyersModel client using the stored token.
-
-        Args:
-            log_path: Directory for Fyers SDK logs.
-
-        Returns:
-            fyersModel.FyersModel: Authenticated client ready for API calls.
-
-        Raises:
-            FyersAuthError: If token is missing or stale.
-        """
-        access_token = self.load_token()
-        client = fyersModel.FyersModel(
-            client_id=self.app_id,
-            token=access_token,
+        """Return an authenticated FyersModel client."""
+        import pathlib
+        pathlib.Path(log_path).mkdir(exist_ok=True)
+        token = self.get_access_token()
+        return fyersModel.FyersModel(
+            client_id=self._app_id,
+            token=token,
             log_path=log_path,
             log_level="ERROR",
         )
-        return client
 
+    def get_token_info(self) -> dict:
+        """Return token metadata for the /api/live/status endpoint."""
+        data = self._load_token()
+        if not data:
+            return {"token_valid": False, "token_date": None, "app_id_prefix": None}
+        today = date.today().isoformat()
+        app_id = data.get("app_id", "")
+        return {
+            "token_valid": data.get("date") == today,
+            "token_date": data.get("date"),
+            # Only expose a masked prefix, never the full app_id
+            "app_id_prefix": app_id[:6] + "***" if len(app_id) >= 6 else "***",
+        }
 
-# ---------------------------------------------------------------------------
-# CLI helper — run this file directly to perform auth flow interactively
-# ---------------------------------------------------------------------------
-if __name__ == "__main__":
-    import sys
-
-    auth = FyersAuthManager()
-    print("\n=== Sentinel × Fyers Authentication ===\n")
-
-    if "--check" in sys.argv:
-        if auth.is_token_valid():
-            print("✅ Token is valid for today.")
-        else:
-            print("❌ Token missing or stale. Re-run without --check to authenticate.")
-        sys.exit(0)
-
-    url = auth.generate_auth_url()
-    print(f"1. Open this URL in your browser:\n\n   {url}\n")
-    print("2. Login with your Fyers credentials and approve access.")
-    print("3. After redirect, copy the FULL redirect URL and paste below.\n")
-    redirect_url = input("Paste redirect URL here: ").strip()
-
-    # Extract auth_code from redirect URL
-    if "auth_code=" in redirect_url:
-        auth_code = redirect_url.split("auth_code=")[1].split("&")[0]
-    elif "code=" in redirect_url:
-        auth_code = redirect_url.split("code=")[1].split("&")[0]
-    else:
-        auth_code = redirect_url  # Maybe they pasted just the code
-
-    try:
-        token = auth.exchange_code_for_token(auth_code)
-        print(f"\n✅ Token obtained and saved to {auth.token_file}")
-        print("   The Sentinel Fyers adapter will use this token automatically.")
-    except FyersAuthError as e:
-        print(f"\n❌ Authentication failed: {e}")
-        sys.exit(1)
-
-
+    # ------------------------------------------------------------------
+    # Legacy alias kept for backward compatibility
+    # ------------------------------------------------------------------
+    def check_token(self) -> bool:
+        return self.is_token_valid()

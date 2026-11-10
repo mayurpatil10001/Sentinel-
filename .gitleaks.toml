@@ -1,0 +1,37 @@
+# .gitleaks.toml — Gitleaks secret scanning configuration
+# =========================================================
+# Install gitleaks: https://github.com/gitleaks/gitleaks
+# Run:  gitleaks detect --source . -v
+# CI:   gitleaks protect --staged (in pre-commit hook)
+
+title = "Sentinel Secret Scanner"
+
+[extend]
+# Use gitleaks default ruleset as the base
+useDefault = true
+
+[[rules]]
+id = "fyers-secret"
+description = "Fyers API Secret ID"
+regex = '''(?i)(fyers[_-]?secret|secret[_-]?id|SECRET_ID)\s*[=:]\s*['"]?[A-Z0-9]{8,}['"]?'''
+tags = ["fyers", "broker", "api-key"]
+
+[[rules]]
+id = "fyers-app-id"
+description = "Fyers App ID literal"
+regex = '''S08D2750W7-\d+'''
+tags = ["fyers", "broker", "app-id"]
+
+[[rules]]
+id = "broker-client-id"
+description = "Broker account / client ID"
+regex = '''FAA\d{5}'''
+tags = ["broker", "account-id"]
+
+[allowlist]
+description = "Allowed files and patterns"
+paths = [
+    '''.env.example''',       # placeholder values only
+    '''tests/test_security_secrets.py''',  # the patterns appear as literals in the test
+    '''.gitleaks.toml''',     # the patterns appear in rules
+]

@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "spoofing",
+    "scenario": "normal",
+    "import": "from app.detection.spoofing import detect_spoofing_for_account",
+    "call": "detect_spoofing_for_account(orders, instrument, window_start, window_end)"
+  },
+  "input": {
+    "instrument": {
+      "symbol": "MAURIUDYOG",
+      "exchange": "NSE"
+    },
+    "orders": [
+      {
+        "exchange_order_id": "EN-1",
+        "side": "OrderSide.BUY",
+        "quantity": 400,
+        "price": 8.45,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2018-10-12T09:17:00"
+      },
+      {
+        "exchange_order_id": "EN-2",
+        "side": "OrderSide.SELL",
+        "quantity": 400,
+        "price": 8.55,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2018-10-12T09:47:00"
+      }
+    ]
+  },
+  "output": {
+    "fired": false,
+    "score": null,
+    "reason": "no excessive cancellations \u2014 below cancel_ratio threshold"
+  }
+}

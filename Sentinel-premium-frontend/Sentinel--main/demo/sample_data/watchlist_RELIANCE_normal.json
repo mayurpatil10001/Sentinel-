@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "RELIANCE",
+    "condition": "normal",
+    "detector": "spoofing",
+    "import_path": "from app.detection.spoofing import detect_spoofing_for_account",
+    "call_signature": "detect_spoofing_for_account(orders, instrument, window_start, window_end)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "RELIANCE",
+      "exchange": "NSE",
+      "type": "equity_large_cap",
+      "avg_daily_volume_30d": 5200000,
+      "description": "Large-cap equity \u2014 avg 5.2M shares/day. High liquidity baseline."
+    },
+    "window": {
+      "start": "2024-01-15T09:45:00",
+      "end": "2024-01-15T10:15:00",
+      "description": "30-minute surveillance window: 09:45\u201310:15"
+    },
+    "data": {
+      "type": "orders",
+      "count": 3,
+      "description": "Standard institutional buy/sell flow \u2014 no elevated cancellation ratio",
+      "records": [
+        {
+          "time": "09:45:00",
+          "order_id": "EN-1",
+          "side": "BUY",
+          "quantity": 150,
+          "price": 2801.0,
+          "status": "EXECUTED"
+        },
+        {
+          "time": "09:57:00",
+          "order_id": "EN-2",
+          "side": "SELL",
+          "quantity": 100,
+          "price": 2808.5,
+          "status": "EXECUTED"
+        },
+        {
+          "time": "10:13:00",
+          "order_id": "EN-3",
+          "side": "BUY",
+          "quantity": 200,
+          "price": 2797.0,
+          "status": "EXECUTED"
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "spoofing"
+    ],
+    "fired": false,
+    "results_by_detector": {
+      "spoofing": {
+        "fired": false,
+        "reason": "cancel_ratio=0.0 \u2014 all orders executed, well below 0.85 threshold"
+      }
+    },
+    "summary": "No anomalies detected in this window"
+  }
+}

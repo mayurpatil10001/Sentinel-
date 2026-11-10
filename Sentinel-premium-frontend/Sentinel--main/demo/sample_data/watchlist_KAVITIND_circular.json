@@ -1,0 +1,109 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "KAVITIND",
+    "condition": "circular",
+    "detector": "circular_trading",
+    "import_path": "from app.detection.circular_trading import detect_circular_trading",
+    "call_signature": "detect_circular_trading(trades, instrument, window_start, window_end)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "KAVITIND",
+      "exchange": "NSE",
+      "type": "penny_stock",
+      "avg_daily_volume_30d": 45000,
+      "description": "Illiquid penny stock \u2014 avg 45,000 shares/day."
+    },
+    "window": {
+      "start": "2018-03-15T10:00:00",
+      "end": "2018-03-15T11:00:00",
+      "description": "60-minute surveillance window: 10:00\u201311:00"
+    },
+    "data": {
+      "type": "trades",
+      "count": 4,
+      "description": "4-account ring: KR-A \u2192 KR-B \u2192 KR-C \u2192 KR-D \u2192 KR-A. Each leg 3,000 shares \u2014 net position change for every account: 0.",
+      "records": [
+        {
+          "time": "10:00:00",
+          "seller": "KR-A",
+          "buyer": "KR-B",
+          "quantity": 3000,
+          "price": 12.5
+        },
+        {
+          "time": "10:08:00",
+          "seller": "KR-B",
+          "buyer": "KR-C",
+          "quantity": 3000,
+          "price": 12.52
+        },
+        {
+          "time": "10:16:00",
+          "seller": "KR-C",
+          "buyer": "KR-D",
+          "quantity": 3000,
+          "price": 12.5
+        },
+        {
+          "time": "10:24:00",
+          "seller": "KR-D",
+          "buyer": "KR-A",
+          "quantity": 3000,
+          "price": 12.53
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "circular_trading"
+    ],
+    "fired": true,
+    "detector": "circular_trading",
+    "score": 0.5016666666666666,
+    "severity": "medium",
+    "summary": "KAVITIND \u2014 circular trading ring, 4 accounts, severity: medium",
+    "explanation": "Circular trading ring detected: KR-A \u2192 KR-B \u2192 KR-C \u2192 KR-D \u2192 KR-A. Ring has 4 accounts. Gross volume within ring: 12,000 shares (1.7x KAVITIND's 30-day avg daily volume). Maximum net position change across all ring accounts: 0.0% of gross volume (threshold: 10%) \u2014 all accounts effectively returned to their starting positions, consistent with no genuine economic purpose. Counterparty identity: directly confirmed from exchange order matching. WARNING: KAVITIND has low daily volume (45,000 shares/day, below the 50,000 illiquid threshold). In illiquid instruments, a small number of legitimate traders naturally trade with each other repeatedly. This signal has been score-discounted by 30% and requires manual analyst review before escalation.",
+    "evidence_table": {
+      "columns": [
+        "Time",
+        "Seller",
+        "Buyer",
+        "Quantity",
+        "Price (\u20b9)"
+      ],
+      "rows": [
+        [
+          "10:00:00",
+          "KR-A",
+          "KR-B",
+          "3000",
+          "\u20b912.50"
+        ],
+        [
+          "10:08:00",
+          "KR-B",
+          "KR-C",
+          "3000",
+          "\u20b912.52"
+        ],
+        [
+          "10:16:00",
+          "KR-C",
+          "KR-D",
+          "3000",
+          "\u20b912.50"
+        ],
+        [
+          "10:24:00",
+          "KR-D",
+          "KR-A",
+          "3000",
+          "\u20b912.53"
+        ]
+      ]
+    }
+  }
+}

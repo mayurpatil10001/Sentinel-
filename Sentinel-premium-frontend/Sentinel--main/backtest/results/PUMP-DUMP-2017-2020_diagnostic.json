@@ -1,0 +1,7 @@
+{
+  "purpose": "Determine confirmed reason for 0 days fetched in PUMP-DUMP-2017-2020. Uses correct fetch_bhavcopy API: fetches entire daily file, filters by SYMBOL.",
+  "connectivity_ok": false,
+  "scrip_results": {},
+  "final_verdict": "DIAGNOSTIC_FAILED_NO_CONNECTIVITY",
+  "final_reason": "Cannot fetch NSE bhavcopy (network or bot-block). Re-run from residential IP."
+}

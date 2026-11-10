@@ -1,0 +1,83 @@
+{
+  "summary": {
+    "total_days_tested": 90,
+    "total_days_flagged": 0,
+    "overall_fp_rate": 0.0,
+    "per_symbol": {
+      "RELIANCE": {
+        "dates_tested": 18,
+        "dates_flagged": 0,
+        "fp_rate": 0.0,
+        "flagged_dates": [],
+        "data_quality_note": ""
+      },
+      "TCS": {
+        "dates_tested": 18,
+        "dates_flagged": 0,
+        "fp_rate": 0.0,
+        "flagged_dates": [],
+        "data_quality_note": ""
+      },
+      "HDFCBANK": {
+        "dates_tested": 18,
+        "dates_flagged": 0,
+        "fp_rate": 0.0,
+        "flagged_dates": [],
+        "data_quality_note": ""
+      },
+      "INFY": {
+        "dates_tested": 18,
+        "dates_flagged": 0,
+        "fp_rate": 0.0,
+        "flagged_dates": [],
+        "data_quality_note": ""
+      },
+      "ICICIBANK": {
+        "dates_tested": 18,
+        "dates_flagged": 0,
+        "fp_rate": 0.0,
+        "flagged_dates": [],
+        "data_quality_note": ""
+      }
+    },
+    "worst_symbol": "RELIANCE",
+    "best_symbol": "RELIANCE"
+  },
+  "per_symbol": {
+    "RELIANCE": {
+      "dates_tested": 18,
+      "dates_flagged": 0,
+      "false_positive_rate": 0.0,
+      "flagged_dates": [],
+      "data_quality_note": ""
+    },
+    "TCS": {
+      "dates_tested": 18,
+      "dates_flagged": 0,
+      "false_positive_rate": 0.0,
+      "flagged_dates": [],
+      "data_quality_note": ""
+    },
+    "HDFCBANK": {
+      "dates_tested": 18,
+      "dates_flagged": 0,
+      "false_positive_rate": 0.0,
+      "flagged_dates": [],
+      "data_quality_note": ""
+    },
+    "INFY": {
+      "dates_tested": 18,
+      "dates_flagged": 0,
+      "false_positive_rate": 0.0,
+      "flagged_dates": [],
+      "data_quality_note": ""
+    },
+    "ICICIBANK": {
+      "dates_tested": 18,
+      "dates_flagged": 0,
+      "false_positive_rate": 0.0,
+      "flagged_dates": [],
+      "data_quality_note": ""
+    }
+  }
+}

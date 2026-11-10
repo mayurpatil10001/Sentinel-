@@ -1,0 +1,101 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "NIFTYFUT",
+    "condition": "basis",
+    "detector": "basis_distortion",
+    "import_path": "from app.detection.basis_distortion import detect_basis_distortion",
+    "call_signature": "detect_basis_distortion(symbol, exchange, spot_price, futures_price, expiry_date, snapshot_time)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "NIFTY",
+      "exchange": "NSE",
+      "type": "futures",
+      "avg_daily_volume_30d": null,
+      "description": "Near-month NIFTY 50 futures contract. Expiry: 2024-12-26"
+    },
+    "snapshot_time": "2024-11-28T14:30:00",
+    "data": {
+      "type": "price_snapshot",
+      "description": "Futures trading at \u20b9370 premium to spot \u2014 fair-value basis is only \u20b9122. Excess contango (1.01% deviation, threshold 0.50%).",
+      "records": [
+        {
+          "field": "Spot price",
+          "value": "\u20b924,500.00"
+        },
+        {
+          "field": "Futures price (distorted)",
+          "value": "\u20b924,870.00"
+        },
+        {
+          "field": "Actual basis",
+          "value": "\u20b9+370.00"
+        },
+        {
+          "field": "Fair-value basis",
+          "value": "\u20b9+122.16"
+        },
+        {
+          "field": "Deviation",
+          "value": "\u20b9+247.84"
+        },
+        {
+          "field": "Days to expiry",
+          "value": "28"
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "basis_distortion"
+    ],
+    "fired": true,
+    "detector": "basis_distortion",
+    "score": 0.2557869723231759,
+    "severity": "low",
+    "summary": "NIFTY futures \u2014 basis distortion (contango excess), severity: low",
+    "explanation": "Basis distortion detected for NIFTY futures (NSE), expiry 2024-12-26 (28 days to expiry). Spot: 24,500.00. Futures: 24,870.00. Actual basis: +370.00. Fair-value basis (cost-of-carry at 6.5% RFR, 28 DTE): +122.16. Deviation: +247.84 (1.012% of spot). Threshold: 0.50%. Interpretation: futures are trading at an ABNORMAL PREMIUM to spot (excess contango). Consistent with artificial buying pressure in futures to create bullish momentum signals. Caveats: (1) This model omits dividend yield \u2014 accuracy degrades for stocks with near-term ex-dividend dates. (2) The threshold (0.50%) is an unvalidated estimate \u2014 the actual threshold should be calibrated from historical basis distributions for each instrument separately.",
+    "evidence_table": {
+      "columns": [
+        "Field",
+        "Value"
+      ],
+      "rows": [
+        [
+          "Spot price",
+          "\u20b924,500.00"
+        ],
+        [
+          "Futures price",
+          "\u20b924,870.00"
+        ],
+        [
+          "Actual basis",
+          "\u20b9+370.00"
+        ],
+        [
+          "Fair-value basis",
+          "\u20b9+122.16"
+        ],
+        [
+          "Deviation",
+          "\u20b9+247.84 (1.012% of spot)"
+        ],
+        [
+          "Direction",
+          "contango_excess"
+        ],
+        [
+          "Score",
+          "0.256"
+        ],
+        [
+          "Severity",
+          "low"
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "NIFTYOPT",
+    "condition": "oi_concentration",
+    "detector": "oi_manipulation",
+    "import_path": "from app.detection.oi_manipulation import detect_oi_concentration",
+    "call_signature": "detect_oi_concentration(chain_df, symbol, exchange, snapshot_time)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "NIFTY",
+      "exchange": "NSE",
+      "type": "options_chain",
+      "avg_daily_volume_30d": null,
+      "description": "NIFTY 50 options chain. Expiry: 2024-12-26. Spot: \u20b924,500"
+    },
+    "snapshot_time": "2024-11-28T12:00:00",
+    "data": {
+      "type": "option_chain",
+      "description": "24000 PE holds 42% of total PE OI (504,000 / 1,200,000). Normal PE distribution would peak at ~25%.",
+      "records": [
+        {
+          "strike": 24000,
+          "option_type": "CE",
+          "oi": 80000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24200,
+          "option_type": "CE",
+          "oi": 120000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24400,
+          "option_type": "CE",
+          "oi": 200000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24600,
+          "option_type": "CE",
+          "oi": 180000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24800,
+          "option_type": "CE",
+          "oi": 90000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24000,
+          "option_type": "PE",
+          "oi": 504000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24200,
+          "option_type": "PE",
+          "oi": 220000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24400,
+          "option_type": "PE",
+          "oi": 180000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24600,
+          "option_type": "PE",
+          "oi": 150000,
+          "expiry": "2024-12-26"
+        },
+        {
+          "strike": 24800,
+          "option_type": "PE",
+          "oi": 146000,
+          "expiry": "2024-12-26"
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "oi_manipulation"
+    ],
+    "fired": true,
+    "detector": "oi_manipulation",
+    "score": 0.18461538461538463,
+    "severity": "low",
+    "summary": "NIFTY options \u2014 OI concentration at 24,000 PE (42.0% of chain), severity: low",
+    "explanation": "Abnormal OI concentration in NIFTY PE options (expiry 2024-12-26): strike 24,000 holds 42.0% of total PE chain OI (504,000 / 1,200,000 contracts). Threshold: 35%. Strike is 2.0% OTM (spot: 24,500.00). High OI concentration in a near ATM strike suggests possible pinning target. Threshold source: unvalidated 95th-percentile estimate from NSE NIFTY chains \u2014 needs backtesting before use in enforcement referrals.",
+    "evidence_table": {
+      "columns": [
+        "Strike",
+        "Type",
+        "OI (contracts)",
+        "% of PE chain",
+        "Flag"
+      ],
+      "rows": [
+        [
+          "24000",
+          "CE",
+          "80,000",
+          "\u2014",
+          ""
+        ],
+        [
+          "24200",
+          "CE",
+          "120,000",
+          "\u2014",
+          ""
+        ],
+        [
+          "24400",
+          "CE",
+          "200,000",
+          "\u2014",
+          ""
+        ],
+        [
+          "24600",
+          "CE",
+          "180,000",
+          "\u2014",
+          ""
+        ],
+        [
+          "24800",
+          "CE",
+          "90,000",
+          "\u2014",
+          ""
+        ],
+        [
+          "24000",
+          "PE",
+          "504,000",
+          "42.0%",
+          "\u25c4 FLAGGED"
+        ],
+        [
+          "24200",
+          "PE",
+          "220,000",
+          "18.3%",
+          ""
+        ],
+        [
+          "24400",
+          "PE",
+          "180,000",
+          "15.0%",
+          ""
+        ],
+        [
+          "24600",
+          "PE",
+          "150,000",
+          "12.5%",
+          ""
+        ],
+        [
+          "24800",
+          "PE",
+          "146,000",
+          "12.2%",
+          ""
+        ]
+      ]
+    }
+  }
+}

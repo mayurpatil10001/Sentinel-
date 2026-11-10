@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# .git/hooks/pre-commit
+# =====================
+# Runs on every `git commit`. Blocks the commit if hardcoded credentials
+# are found in staged files or if the secret-scan test fails.
+#
+# Install: cp .github/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# Or use:  git config core.hooksPath .github/hooks
+#
+# Requires: Python 3.11+, pytest, the project venv activated.
+
+set -e
+
+echo "→ Running credential scan on staged files..."
+
+# 1. Check staged files for forbidden patterns
+FORBIDDEN_PATTERNS=(
+    "O06AUI9GFX"
+    "FAA25578"
+)
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+
+for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
+    for file in $STAGED; do
+        if [ -f "$file" ] && grep -q "$pattern" "$file" 2>/dev/null; then
+            echo "❌ BLOCKED: '$pattern' found in staged file: $file"
+            echo "   Remove the hardcoded credential and use an environment variable."
+            echo "   If this is a test fixture, use a clearly fake value (e.g. FAKE_SECRET_XYZ)."
+            exit 1
+        fi
+    done
+done
+
+# 2. Run the security test suite
+echo "→ Running security tests..."
+python -m pytest tests/test_security_secrets.py -q --tb=short 2>&1
+if [ $? -ne 0 ]; then
+    echo "❌ BLOCKED: Security tests failed. Fix before committing."
+    exit 1
+fi
+
+echo "✓ Credential scan passed."
+exit 0

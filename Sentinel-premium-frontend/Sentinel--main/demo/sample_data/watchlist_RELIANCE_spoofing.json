@@ -1,0 +1,198 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "RELIANCE",
+    "condition": "spoofing",
+    "detector": "spoofing",
+    "import_path": "from app.detection.spoofing import detect_spoofing_for_account",
+    "call_signature": "detect_spoofing_for_account(orders, instrument, window_start, window_end)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "RELIANCE",
+      "exchange": "NSE",
+      "type": "equity_large_cap",
+      "avg_daily_volume_30d": 5200000,
+      "description": "Large-cap equity \u2014 avg 5.2M shares/day."
+    },
+    "window": {
+      "start": "2024-01-15T09:45:00",
+      "end": "2024-01-15T10:15:00",
+      "description": "30-minute surveillance window: 09:45\u201310:15"
+    },
+    "data": {
+      "type": "orders",
+      "count": 9,
+      "description": "4 large BUY orders (all cancelled within 6 min) + SELL executed at peak price",
+      "records": [
+        {
+          "time": "09:45:00",
+          "order_id": "ER-1",
+          "side": "BUY",
+          "quantity": 1500,
+          "price": 2800.0,
+          "status": "PLACED"
+        },
+        {
+          "time": "09:46:00",
+          "order_id": "ER-2",
+          "side": "BUY",
+          "quantity": 1500,
+          "price": 2801.0,
+          "status": "PLACED"
+        },
+        {
+          "time": "09:47:00",
+          "order_id": "ER-3",
+          "side": "BUY",
+          "quantity": 1500,
+          "price": 2802.5,
+          "status": "PLACED"
+        },
+        {
+          "time": "09:48:00",
+          "order_id": "ER-4",
+          "side": "BUY",
+          "quantity": 1500,
+          "price": 2801.5,
+          "status": "PLACED"
+        },
+        {
+          "time": "09:50:00",
+          "order_id": "ER-1",
+          "side": "BUY",
+          "quantity": 1500,
+          "price": 2800.0,
+          "status": "CANCELLED"
+        },
+        {
+          "time": "09:50:10",
+          "order_id": "ER-2",
+          "side": "BUY",
+          "quantity": 1500,
+          "price": 2801.0,
+          "status": "CANCELLED"
+        },
+        {
+          "time": "09:50:20",
+          "order_id": "ER-3",
+          "side": "BUY",
+          "quantity": 1500,
+          "price": 2802.5,
+          "status": "CANCELLED"
+        },
+        {
+          "time": "09:50:30",
+          "order_id": "ER-4",
+          "side": "BUY",
+          "quantity": 1500,
+          "price": 2801.5,
+          "status": "CANCELLED"
+        },
+        {
+          "time": "09:51:00",
+          "order_id": "ER-5",
+          "side": "SELL",
+          "quantity": 200,
+          "price": 2820.0,
+          "status": "EXECUTED"
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "spoofing"
+    ],
+    "fired": true,
+    "detector": "spoofing",
+    "score": 0.7139612912775852,
+    "severity": "high",
+    "summary": "RELIANCE \u2014 spoofing/layering, cancel ratio 97%, severity: high",
+    "explanation": "Account ACC-REL-1 placed orders totaling 17,371,500 in value for RELIANCE (NSE), then cancelled 96.8% of that value. Peak order size was 6.0x the instrument's 30-day average order size. Price moved 0.71% while the order(s) were resting. The account also executed trades on the opposite side of the cancelled orders, consistent with profiting from the price move it caused.",
+    "evidence_table": {
+      "columns": [
+        "Time",
+        "Order ID",
+        "Side",
+        "Quantity",
+        "Price",
+        "Status"
+      ],
+      "rows": [
+        [
+          "09:45:00",
+          "ER-1",
+          "BUY",
+          "1500",
+          "\u20b92,800.00",
+          "PLACED"
+        ],
+        [
+          "09:46:00",
+          "ER-2",
+          "BUY",
+          "1500",
+          "\u20b92,801.00",
+          "PLACED"
+        ],
+        [
+          "09:47:00",
+          "ER-3",
+          "BUY",
+          "1500",
+          "\u20b92,802.50",
+          "PLACED"
+        ],
+        [
+          "09:48:00",
+          "ER-4",
+          "BUY",
+          "1500",
+          "\u20b92,801.50",
+          "PLACED"
+        ],
+        [
+          "09:50:00",
+          "ER-1",
+          "BUY",
+          "1500",
+          "\u20b92,800.00",
+          "CANCELLED"
+        ],
+        [
+          "09:50:10",
+          "ER-2",
+          "BUY",
+          "1500",
+          "\u20b92,801.00",
+          "CANCELLED"
+        ],
+        [
+          "09:50:20",
+          "ER-3",
+          "BUY",
+          "1500",
+          "\u20b92,802.50",
+          "CANCELLED"
+        ],
+        [
+          "09:50:30",
+          "ER-4",
+          "BUY",
+          "1500",
+          "\u20b92,801.50",
+          "CANCELLED"
+        ],
+        [
+          "09:51:00",
+          "ER-5",
+          "SELL",
+          "200",
+          "\u20b92,820.00",
+          "EXECUTED"
+        ]
+      ]
+    }
+  }
+}

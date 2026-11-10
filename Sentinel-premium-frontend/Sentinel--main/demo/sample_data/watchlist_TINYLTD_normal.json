@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "TINYLTD",
+    "condition": "normal",
+    "detector": "coordinated_pump",
+    "import_path": "from app.detection.coordinated_pump import detect_coordinated_pump",
+    "call_signature": "detect_coordinated_pump(buy_orders, instrument, window_start, window_end, ...)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "TINYLTD",
+      "exchange": "NSE",
+      "type": "penny_stock",
+      "avg_daily_volume_30d": 30000,
+      "description": "Mid-cap penny stock \u2014 avg 30,000 shares/day."
+    },
+    "window": {
+      "start": "2019-06-10T10:30:00",
+      "end": "2019-06-10T11:00:00",
+      "description": "30-minute surveillance window: 10:30\u201311:00"
+    },
+    "data": {
+      "type": "orders",
+      "count": 3,
+      "description": "3 regularly active accounts, small buy orders staggered naturally",
+      "records": [
+        {
+          "time": "10:30:00",
+          "account": "ORG-1",
+          "quantity": 150,
+          "price": 3.1,
+          "status": "EXECUTED"
+        },
+        {
+          "time": "10:39:00",
+          "account": "ORG-2",
+          "quantity": 150,
+          "price": 3.12,
+          "status": "EXECUTED"
+        },
+        {
+          "time": "10:48:00",
+          "account": "ORG-3",
+          "quantity": 150,
+          "price": 3.14,
+          "status": "EXECUTED"
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "coordinated_pump"
+    ],
+    "fired": false,
+    "results_by_detector": {
+      "coordinated_pump": {
+        "fired": false,
+        "reason": "only 3 accounts AND combined volume below 5.0\u00d7 normal \u2014 both thresholds needed"
+      }
+    },
+    "summary": "No anomalies detected in this window"
+  }
+}

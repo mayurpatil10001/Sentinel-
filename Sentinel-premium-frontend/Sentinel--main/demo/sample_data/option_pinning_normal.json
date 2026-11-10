@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "option_pinning",
+    "scenario": "normal",
+    "import": "from app.detection.option_pinning import detect_option_pinning",
+    "call": "detect_option_pinning(...)"
+  },
+  "input": {
+    "spot_price": 24497.0,
+    "expiry_date": "2024-12-03",
+    "note": "5 DTE \u2014 beyond PIN_EXPIRY_DAYS_THRESHOLD=2"
+  },
+  "output": {
+    "fired": false,
+    "reason": "days_to_expiry > PIN_EXPIRY_DAYS_THRESHOLD \u2192 returns None immediately"
+  }
+}

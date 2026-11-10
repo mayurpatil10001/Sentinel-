@@ -429,7 +429,8 @@ class FyersMarketDataAdapter:
             "token_date": self._get_token_date(),
             "circuit_state": circuit_state,
             "circuit_failures": self._circuit_breaker.consecutive_failures,
-            "app_id": self.auth_manager.app_id,
+            # Return only a masked prefix — never the full app_id or account ID
+            "app_id_prefix": self.auth_manager.get_token_info().get("app_id_prefix", "***"),
         }
 
     def _get_token_date(self) -> Optional[str]:

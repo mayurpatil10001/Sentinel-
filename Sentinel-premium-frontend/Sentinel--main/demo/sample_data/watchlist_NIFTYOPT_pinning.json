@@ -1,0 +1,133 @@
+{
+  "meta": {
+    "sample_data": true,
+    "asset": "NIFTYOPT",
+    "condition": "pinning",
+    "detector": "option_pinning",
+    "import_path": "from app.detection.option_pinning import detect_option_pinning",
+    "call_signature": "detect_option_pinning(chain_df, symbol, exchange, spot_price, expiry_date, snapshot_time)"
+  },
+  "input": {
+    "asset": {
+      "symbol": "NIFTY",
+      "exchange": "NSE",
+      "type": "options_chain",
+      "avg_daily_volume_30d": null,
+      "description": "NIFTY 50 options \u2014 EXPIRY DAY 2024-11-28. Spot: \u20b924,497"
+    },
+    "snapshot_time": "2024-11-28T14:45:00",
+    "data": {
+      "type": "option_chain",
+      "description": "Expiry day. Spot \u20b924,497 within 0.012% of 24,500 strike. 24500 CE+PE OI = 520,000 vs adjacent avg \u2248 115,000 (4.5\u00d7).",
+      "records": [
+        {
+          "strike": 24300,
+          "option_type": "CE",
+          "oi": 30000
+        },
+        {
+          "strike": 24300,
+          "option_type": "PE",
+          "oi": 30000
+        },
+        {
+          "strike": 24400,
+          "option_type": "CE",
+          "oi": 60000
+        },
+        {
+          "strike": 24400,
+          "option_type": "PE",
+          "oi": 60000
+        },
+        {
+          "strike": 24500,
+          "option_type": "CE",
+          "oi": 260000
+        },
+        {
+          "strike": 24500,
+          "option_type": "PE",
+          "oi": 260000
+        },
+        {
+          "strike": 24600,
+          "option_type": "CE",
+          "oi": 55000
+        },
+        {
+          "strike": 24600,
+          "option_type": "PE",
+          "oi": 55000
+        },
+        {
+          "strike": 24700,
+          "option_type": "CE",
+          "oi": 25000
+        },
+        {
+          "strike": 24700,
+          "option_type": "PE",
+          "oi": 25000
+        }
+      ]
+    }
+  },
+  "output": {
+    "detectors_run": [
+      "option_pinning"
+    ],
+    "fired": true,
+    "detector": "option_pinning",
+    "score": 0.9914275217373556,
+    "severity": "critical",
+    "summary": "NIFTY \u2014 option pinning at strike 24,500, OI dominance 4.5\u00d7, severity: critical",
+    "explanation": "Option pinning detected for NIFTY (NSE): spot 24,497.00 is within 0.012% of strike 24,500 (threshold: 0.50%), with 0 calendar day(s) to expiry 2024-11-28. Strike 24,500 holds 520,000 total OI (4.5\u00d7 the average OI of adjacent strikes: 115,000; dominance threshold: 2.0\u00d7). Max-pain strike for this chain: 24,500 (same as pin candidate). Interpretation: spot price may be being actively maintained near this strike to minimise option payout on expiry. FALSE POSITIVE WARNING: market makers with natural gamma exposure produce identical patterns without manipulative intent. This signal requires manual review before any regulatory referral.",
+    "evidence_table": {
+      "columns": [
+        "Strike",
+        "CE OI",
+        "PE OI",
+        "Combined OI",
+        "vs Adjacent"
+      ],
+      "rows": [
+        [
+          "24300",
+          "30,000",
+          "30,000",
+          "60,000",
+          "\u2014"
+        ],
+        [
+          "24400",
+          "60,000",
+          "60,000",
+          "120,000",
+          "\u2014"
+        ],
+        [
+          "24500",
+          "260,000",
+          "260,000",
+          "520,000",
+          "\u25c4 DOMINANT (4.5\u00d7)"
+        ],
+        [
+          "24600",
+          "55,000",
+          "55,000",
+          "110,000",
+          "\u2014"
+        ],
+        [
+          "24700",
+          "25,000",
+          "25,000",
+          "50,000",
+          "\u2014"
+        ]
+      ]
+    }
+  }
+}

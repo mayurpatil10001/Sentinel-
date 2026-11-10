@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "basis_distortion",
+    "scenario": "trigger",
+    "import": "from app.detection.basis_distortion import detect_basis_distortion",
+    "call": "detect_basis_distortion(symbol, exchange, spot_price, futures_price, expiry_date, snapshot_time)"
+  },
+  "input": {
+    "symbol": "RELIANCE",
+    "exchange": "NSE",
+    "spot_price": 3020.0,
+    "futures_price": 3065.0,
+    "expiry_date": "2024-12-26",
+    "snapshot_time": "2024-11-28T14:30:00",
+    "risk_free_rate": 0.065
+  },
+  "output": {
+    "fired": true,
+    "score": 0.24571804408963074,
+    "severity": "low",
+    "actual_basis": 45.0,
+    "fair_value_basis": 15.058630136986302,
+    "basis_deviation": 29.941369863013698,
+    "deviation_pct": 0.009914360881792615,
+    "direction": "contango_excess",
+    "days_to_expiry": 28,
+    "explanation": "Basis distortion detected for RELIANCE futures (NSE), expiry 2024-12-26 (28 days to expiry). Spot: 3,020.00. Futures: 3,065.00. Actual basis: +45.00. Fair-value basis (cost-of-carry at 6.5% RFR, 28 DTE): +15.06. Deviation: +29.94 (0.991% of spot). Threshold: 0.50%. Interpretation: futures are trading at an ABNORMAL PREMIUM to spot (excess contango). Consistent with artificial buying pressure in futures to create bullish momentum signals. Caveats: (1) This model omits dividend yield \u2014 accuracy degrades for stocks with near-term ex-dividend dates. (2) The threshold (0.50%) is an unvalidated estimate \u2014 the actual threshold should be calibrated from historical basis distributions for each instrument separately."
+  }
+}

@@ -921,7 +921,7 @@ button { cursor: pointer; }
       <div id="scanStatusBar" style="display:none;background:#1a1f2e;border:1px solid var(--crimson);border-radius:4px;padding:3px 10px;font-size:11px;color:#f85149;">
         ⚡ <span id="scanStatusText">Scanning…</span>
       </div>
-      <div>FYERS LIVE: <b id="fyersBadge" class="green" style="cursor:pointer" onclick="document.getElementById('fyersAuthModal').style.display='flex'">CONNECTED (FAA25578)</b></div>
+      <div>FYERS LIVE: <b id="fyersBadge" style="cursor:pointer" onclick="document.getElementById('fyersAuthModal').style.display='flex'">CHECKING…</b></div>
       <div>CRYPTOGRAPHIC SEAL: <b>SHA-256 APPEND-ONLY</b></div>
       <div>FALSE POSITIVE RATE: <b class="green">0.0% (90-DAY EMPIRICAL)</b></div>
     </div>
@@ -950,7 +950,7 @@ button { cursor: pointer; }
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3fb950;box-shadow:0 0 10px #3fb950;"></span>
               <span style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:#58a6ff;text-transform:uppercase;">Fyers Real-Time NSE Market Stream</span>
-              <span class="tag tag-clean" id="fyersUserTag">Client: FAA25578</span>
+              <span class="tag tag-clean" id="fyersUserTag">Fyers API</span>
               <span class="tag tag-clean">15 Monitored Scrips</span>
             </div>
             <div style="font-size:11px;color:var(--text-dim);" id="fyersLastUpdate">Connecting...</div>
@@ -1123,7 +1123,7 @@ button { cursor: pointer; }
                 <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#3fb950;"></span>
                 Fyers Live Stream Watchlist (15 High-Frequency NSE Instruments)
               </div>
-              <div class="card-head-sub">Live tick quotes, bid/ask, and daily volatility ingested directly from Fyers Broker API for Account FAA25578.</div>
+              <div class="card-head-sub">Live tick quotes, bid/ask, and daily volatility ingested directly from the Fyers Broker API. Account details are not stored in the UI.</div>
             </div>
             <button class="btn btn-emerald" onclick="fyersRefreshPrices()">↻ Refresh Live Ticks</button>
           </div>
@@ -2464,7 +2464,7 @@ document.getElementById('masterSearch').addEventListener('keydown', e => {
       style="position:absolute;top:12px;right:16px;background:none;border:none;color:#8b949e;font-size:20px;cursor:pointer;">x</button>
     <h3 style="color:#58a6ff;margin:0 0 8px;">Connect Fyers Live Data</h3>
     <p style="color:#8b949e;font-size:13px;margin:0 0 20px;">
-      Authenticate with Fyers (App: S08D2750W7-100) to stream real-time quotes,
+      Authenticate with your Fyers account to stream real-time quotes,
       market depth, and option chain data. Token must be refreshed once per trading day.
     </p>
     <p style="color:#e6edf3;font-size:13px;margin:0 0 10px;"><b>Step 1:</b> Generate a Fyers login URL.</p>
@@ -2494,9 +2494,18 @@ async function fyersPollStatus(){
   try{
     const r=await fetch('/api/live/status'),d=await r.json();
     const b=document.getElementById('fyersBadge');if(!b)return;
-    if(d.token_valid){b.textContent='FYERS CONNECTED ('+d.app_id+')';b.className='green';fyersRefreshPrices();}
-    else{b.textContent='NOT CONNECTED - click to authenticate';b.className='amber';}
-  }catch(e){const b=document.getElementById('fyersBadge');if(b){b.textContent='API UNREACHABLE';b.className='red';}}
+    const ut=document.getElementById('fyersUserTag');
+    if(d.token_valid){
+      // Show only a masked prefix, never the full app ID or client ID
+      const prefix = d.app_id_prefix || 'Fyers';
+      b.textContent='FYERS CONNECTED ('+prefix+')';b.className='green';
+      if(ut) ut.textContent='Fyers API · Token valid';
+      fyersRefreshPrices();
+    } else {
+      b.textContent='NOT CONNECTED — click to authenticate';b.className='amber';b.style.color='#e3b341';
+      if(ut) ut.textContent='Fyers API · No token';
+    }
+  }catch(e){const b=document.getElementById('fyersBadge');if(b){b.textContent='API UNREACHABLE';b.className='';b.style.color='#f85149';}}
 }
 
 function renderFyersLiveDOM(quotes) {

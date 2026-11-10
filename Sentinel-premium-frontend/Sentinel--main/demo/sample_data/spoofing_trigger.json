@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "spoofing",
+    "scenario": "trigger",
+    "import": "from app.detection.spoofing import detect_spoofing_for_account",
+    "call": "detect_spoofing_for_account(orders, instrument, window_start, window_end)"
+  },
+  "input": {
+    "instrument": {
+      "symbol": "MAURIUDYOG",
+      "exchange": "NSE",
+      "avg_daily_volume_30d": 120000,
+      "avg_order_size_30d": 500
+    },
+    "orders": [
+      {
+        "exchange_order_id": "EO-1",
+        "side": "OrderSide.BUY",
+        "quantity": 2200,
+        "price": 8.5,
+        "status": "OrderStatus.PLACED",
+        "timestamp": "2018-10-12T09:17:00"
+      },
+      {
+        "exchange_order_id": "EO-2",
+        "side": "OrderSide.BUY",
+        "quantity": 2200,
+        "price": 8.5,
+        "status": "OrderStatus.PLACED",
+        "timestamp": "2018-10-12T09:18:00"
+      },
+      {
+        "exchange_order_id": "EO-3",
+        "side": "OrderSide.BUY",
+        "quantity": 2200,
+        "price": 8.6,
+        "status": "OrderStatus.PLACED",
+        "timestamp": "2018-10-12T09:19:00"
+      },
+      {
+        "exchange_order_id": "EO-4",
+        "side": "OrderSide.BUY",
+        "quantity": 2200,
+        "price": 8.55,
+        "status": "OrderStatus.PLACED",
+        "timestamp": "2018-10-12T09:20:00"
+      },
+      {
+        "exchange_order_id": "EO-1",
+        "side": "OrderSide.BUY",
+        "quantity": 2200,
+        "price": 8.5,
+        "status": "OrderStatus.CANCELLED",
+        "timestamp": "2018-10-12T09:21:00"
+      },
+      {
+        "exchange_order_id": "EO-2",
+        "side": "OrderSide.BUY",
+        "quantity": 2200,
+        "price": 8.5,
+        "status": "OrderStatus.CANCELLED",
+        "timestamp": "2018-10-12T09:21:10"
+      },
+      {
+        "exchange_order_id": "EO-3",
+        "side": "OrderSide.BUY",
+        "quantity": 2200,
+        "price": 8.6,
+        "status": "OrderStatus.CANCELLED",
+        "timestamp": "2018-10-12T09:21:20"
+      },
+      {
+        "exchange_order_id": "EO-4",
+        "side": "OrderSide.BUY",
+        "quantity": 2200,
+        "price": 8.55,
+        "status": "OrderStatus.CANCELLED",
+        "timestamp": "2018-10-12T09:21:30"
+      },
+      {
+        "exchange_order_id": "EO-5",
+        "side": "OrderSide.SELL",
+        "quantity": 450,
+        "price": 8.65,
+        "status": "OrderStatus.EXECUTED",
+        "timestamp": "2018-10-12T09:22:00"
+      }
+    ],
+    "window_start": "2018-10-12T09:17:00",
+    "window_end": "2018-10-12T09:32:00"
+  },
+  "output": {
+    "fired": true,
+    "score": 0.7084220800851584,
+    "severity": "high",
+    "cancel_ratio": 0.9507418773134234,
+    "size_multiple": 4.4,
+    "price_impact_pct": 1.7647058823529453,
+    "opposite_side_executed": true,
+    "explanation": "Account ACC-7741 placed orders totaling 79,022 in value for MAURIUDYOG (NSE), then cancelled 95.1% of that value. Peak order size was 4.4x the instrument's 30-day average order size. Price moved 1.76% while the order(s) were resting. The account also executed trades on the opposite side of the cancelled orders, consistent with profiting from the price move it caused."
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "sample_data": true,
+    "detector": "basis_distortion",
+    "scenario": "normal",
+    "import": "from app.detection.basis_distortion import detect_basis_distortion",
+    "call": "detect_basis_distortion(...)"
+  },
+  "input": {
+    "spot_price": 3020.0,
+    "futures_price": 3035.1,
+    "note": "futures near theoretical fair-value \u2014 normal basis"
+  },
+  "output": {
+    "fired": false,
+    "score": null,
+    "reason": "basis within fair-value range; deviation < BASIS_DEVIATION_THRESHOLD"
+  }
+}
