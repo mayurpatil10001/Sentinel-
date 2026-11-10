@@ -855,18 +855,16 @@ button { cursor: pointer; }
     <div class="sidebar-foot">
       <div class="threat-monitor">
         <div class="threat-head">
-          <span style="color:var(--text-muted);font-weight:700;">THREAT LEVEL</span>
-          <span style="color:var(--amber);font-weight:700;display:flex;align-items:center;gap:5px;">
-            <i class="pulse-dot" style="background:var(--amber);box-shadow:0 0 8px var(--amber);"></i> DEFCON 2
+          <span style="color:var(--text-muted);font-weight:700;">SYSTEM STATE</span>
+          <span style="color:var(--emerald);font-weight:700;display:flex;align-items:center;gap:5px;">
+            <i class="pulse-dot"></i> <span id="sideSysStatus">ACTIVE</span>
           </span>
         </div>
         <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;">
-          Active Cross-Market Surveillance
+          Fyers Market Stream · IST Hours
         </div>
         <div style="height:4px;background:#1e293b;border-radius:2px;overflow:hidden;display:flex;">
-          <div style="width:45%;background:var(--emerald);"></div>
-          <div style="width:35%;background:var(--amber);"></div>
-          <div style="width:20%;background:var(--crimson);"></div>
+          <div style="width:100%;background:var(--emerald);"></div>
         </div>
       </div>
     </div>
@@ -903,11 +901,11 @@ button { cursor: pointer; }
         </button>
         <button class="btn" onclick="syncAllData()" title="Re-query API Feeds">↻ Refresh</button>
         <button class="btn" id="scanBtn" onclick="runLiveScan()" title="Run manipulation detection on live market data" style="background:var(--crimson);color:#fff;font-weight:700;">▶ Run Live Scan</button>
-        <div class="officer-badge">
-          <div class="officer-avatar">SO</div>
+        <div class="officer-badge" style="cursor:pointer;" onclick="document.getElementById('fyersAuthModal').style.display='flex'" title="Click to view or refresh Fyers connection">
+          <div class="officer-avatar" style="background:#238636;">FY</div>
           <div>
-            <div style="font-weight:700;color:#fff;">SO-412</div>
-            <div style="font-size:9px;color:var(--text-dim);">SEBI Surveillance</div>
+            <div style="font-weight:700;color:#fff;" id="topUserBadge">Fyers Account</div>
+            <div style="font-size:9px;color:var(--emerald);" id="topUserSub">Connected</div>
           </div>
         </div>
       </div>
@@ -939,7 +937,6 @@ button { cursor: pointer; }
             <p class="view-subtitle">Live multi-asset market manipulation tracking, retail harm quantification, and regulatory audit trail.</p>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-crimson" onclick="openSimulationLab()">⚡ Run Anomaly Simulation</button>
             <button class="btn btn-emerald" onclick="switchView('alerts')">Active Signals Queue</button>
           </div>
         </div>
@@ -1038,46 +1035,20 @@ button { cursor: pointer; }
           </div>
         </div>
 
-        <!-- Split Grid: Intraday Signal Chart & Priority Signal Feed -->
+        <!-- Split Grid: Real Scan Telemetry & Priority Signal Feed -->
         <div class="split-2">
-          <!-- Anomaly Intensity Waveform -->
+          <!-- Real Scan Telemetry Card -->
           <div class="card card-pad">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <div>
-                <div class="card-head-title">Market Anomaly Intensity Waveform (Intraday)</div>
-                <div class="card-head-sub">Aggregate order-cancellation density, synchronized trade spikes & basis distortion</div>
+                <div class="card-head-title">Real Scan Execution Telemetry</div>
+                <div class="card-head-sub">Live audit trail from the background scheduler and on-demand scans</div>
               </div>
-              <div style="display:flex;gap:6px;">
-                <span class="tag tag-critical">Spoofing Burst</span>
-                <span class="tag tag-medium">Basis Divergence</span>
-              </div>
+              <button class="btn" style="padding:4px 8px;font-size:11px;" onclick="refreshRecentScanRuns()">↻ Refresh</button>
             </div>
 
-            <!-- SVG Waveform -->
-            <div style="height:220px;width:100%;position:relative;margin-top:10px;">
-              <svg viewBox="0 0 1000 220" preserveAspectRatio="none" style="width:100%;height:100%;">
-                <defs>
-                  <linearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#ef4444" stop-opacity="0.35"/>
-                    <stop offset="50%" stop-color="#f59e0b" stop-opacity="0.15"/>
-                    <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
-                  </linearGradient>
-                </defs>
-                <path d="M0,160 Q120,150 200,165 T400,140 T550,60 T680,130 T850,75 T1000,110 L1000,220 L0,220 Z" fill="url(#waveGrad)"/>
-                <path d="M0,160 Q120,150 200,165 T400,140 T550,60 T680,130 T850,75 T1000,110" fill="none" stroke="#ef4444" stroke-width="2.2"/>
-                <line x1="0" y1="60" x2="1000" y2="60" stroke="#334155" stroke-dasharray="4"/>
-                <line x1="0" y1="120" x2="1000" y2="120" stroke="#334155" stroke-dasharray="4"/>
-                <line x1="0" y1="180" x2="1000" y2="180" stroke="#334155" stroke-dasharray="4"/>
-                <!-- Spike Marker -->
-                <circle cx="550" cy="60" r="5" fill="#ef4444"/>
-                <text x="560" y="55" fill="#f87171" font-size="11" font-family="var(--font-mono)">ALERT: DOUBLEHIT Layering Spike</text>
-              </svg>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10.5px;color:var(--text-dim);font-family:var(--font-mono);">
-              <span>09:15 PRE-OPEN DISCOVERY</span>
-              <span>11:30 MORNING LIQUIDITY</span>
-              <span>13:30 EUROPEAN ARBITRAGE</span>
-              <span>15:30 CLOSING SETTLEMENT</span>
+            <div id="recentScanRunsBox" style="font-size:12px;max-height:280px;overflow-y:auto;">
+              <div style="color:var(--text-dim);padding:20px;text-align:center;">Loading scan runs…</div>
             </div>
           </div>
 
@@ -1296,7 +1267,6 @@ button { cursor: pointer; }
             <h2 class="view-title">The 6 Core Surveillance Engines</h2>
             <p class="view-subtitle">Mathematical heuristics, regulatory PFUTP citations, configured thresholds, and validation status.</p>
           </div>
-          <button class="btn btn-emerald" onclick="openSimulationLab()">⚡ Open Forensics Simulation Lab</button>
         </div>
 
         <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:16px;" id="detectorsGrid">
@@ -1710,6 +1680,12 @@ function renderCommandCenter() {
   document.getElementById('kpiPendingReview').textContent = `${highCount} high-priority threats active`;
   document.getElementById('kpiInstruments').textContent = state.instruments.length;
   document.getElementById('sideAlertCount').textContent = openCount;
+
+  const harmBoxes = state.alerts.filter(a => ['critical', 'high'].includes(a.severity));
+  const harmVal = harmBoxes.length ? `₹${(harmBoxes.length * 0.25).toFixed(2)} Cr` : '₹0.00';
+  const harmEl = document.getElementById('kpiHarmVal');
+  if (harmEl) harmEl.textContent = harmVal;
+  refreshRecentScanRuns();
 
   // Heatmap rendering — prefer real anomaly scores from /api/live/heatmap
   if (state.heatmap && state.heatmap.length) {
@@ -2192,77 +2168,52 @@ function switchDosTab(tabName) {
       </div>
     `;
   } else if (tabName === 'forensics') {
-    // Pattern Forensics
-    let forensicsHtml = '';
-    if (a.pattern_type.includes('spoofing')) {
-      forensicsHtml = `
-        <div class="card card-pad" style="margin-bottom:16px;">
-          <div class="card-head-title" style="margin-bottom:8px;">Level-3 Order Book Depth & Layering Ladder</div>
-          <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:12px;">
-            Simulated reconstruct of order book showing phantom buy orders placed 4.4x above average size and canceled within 280ms of opposite-side execution.
-          </p>
+    // Empirical Forensic Evidence
+    const evObj = a.evidence || {};
+    const evEntries = Object.entries(evObj);
 
-          <div style="margin-bottom:12px;">
-            <div class="ladder-row" style="font-weight:700;color:var(--text-dim);font-size:10px;">
-              <span>BID DEPTH (CANCEL-HEAVY)</span>
-              <span>ASK DEPTH (REAL EXECUTION)</span>
-            </div>
-            <div class="ladder-row">
-              <div class="ladder-cell ladder-bid"><span>₹1,245.50 (PHANTOM)</span><b>8,500 sh [CANCEL]</b></div>
-              <div class="ladder-cell ladder-ask"><span>₹1,246.00</span><b>1,200 sh</b></div>
-            </div>
-            <div class="ladder-row">
-              <div class="ladder-cell ladder-bid"><span>₹1,245.00 (PHANTOM)</span><b>12,000 sh [CANCEL]</b></div>
-              <div class="ladder-cell ladder-ask"><span>₹1,246.50</span><b>1,500 sh</b></div>
-            </div>
-            <div class="ladder-row">
-              <div class="ladder-cell ladder-bid"><span>₹1,244.50 (PHANTOM)</span><b>15,500 sh [CANCEL]</b></div>
-              <div class="ladder-cell ladder-ask"><span>₹1,247.00 (REAL DUMP)</span><b>4,800 sh [EXEC]</b></div>
-            </div>
-          </div>
-
-          <div style="background:#05080e;border:1px solid var(--border);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11.5px;">
-            <div>Cancel-to-Fill Ratio: <b style="color:var(--crimson);">95.1%</b> (Threshold: 85.0%)</div>
-            <div>Order Size Multiple: <b style="color:var(--crimson);">4.4x normal</b> (Threshold: 3.0x)</div>
-            <div>Price Impact Created: <b style="color:var(--crimson);">+1.76%</b></div>
-          </div>
-        </div>
-      `;
-    } else if (a.pattern_type.includes('circular')) {
-      forensicsHtml = `
-        <div class="card card-pad" style="margin-bottom:16px;">
-          <div class="card-head-title" style="margin-bottom:8px;">Circular Counterparty Ring Graph (Tarjan's Cycle)</div>
-          <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:12px;">
-            Closed trading cycle detected among 5 colluding accounts with zero net economic position change.
-          </p>
-
-          <div style="background:#05080e;border:1px solid var(--border);border-radius:6px;padding:16px;text-align:center;margin-bottom:12px;">
-            <div style="font-family:var(--font-mono);font-size:12.5px;color:var(--cyan);line-height:2;">
-              [ACC-A] ──(15,000 sh @ ₹214)──► [ACC-B]<br>
-              ▲ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; │<br>
-              │ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ▼<br>
-              [ACC-E] ◄── [ACC-D] ◄── [ACC-C]
-            </div>
-          </div>
-
-          <div style="background:#05080e;border:1px solid var(--border);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11.5px;">
-            <div>Cycle Length: <b>5 Accounts</b></div>
-            <div>Gross Volume Traded: <b>15,000 shares</b></div>
-            <div>Net Economic Risk: <b style="color:var(--emerald);">0.0% (Zero Delta)</b></div>
-            <div>Artificial Volume Multiple: <b style="color:var(--crimson);">2.17x baseline</b></div>
-          </div>
-        </div>
-      `;
-    } else {
-      forensicsHtml = `
-        <div class="card card-pad" style="margin-bottom:16px;">
-          <div class="card-head-title" style="margin-bottom:8px;">Statistical Anomaly Signature</div>
-          <div class="code-dump">${esc(JSON.stringify(a, null, 2))}</div>
-        </div>
+    let rowsHtml = '';
+    if (evEntries.length) {
+      rowsHtml = `
+        <table class="table" style="margin-bottom:14px;font-size:12px;">
+          <thead>
+            <tr>
+              <th style="width:40%;">Parameter</th>
+              <th>Measured Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${evEntries.map(([k, v]) => `
+              <tr>
+                <td style="color:var(--text-muted);font-family:var(--font-mono);">${esc(k.replace(/_/g, ' '))}</td>
+                <td style="color:#fff;font-family:var(--font-mono);font-weight:600;">${esc(typeof v === 'object' ? JSON.stringify(v) : String(v))}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       `;
     }
 
-    body.innerHTML = forensicsHtml;
+    body.innerHTML = `
+      <div class="card card-pad" style="margin-bottom:16px;">
+        <div class="card-head-title" style="margin-bottom:8px;">Empirical Evidence & Forensic Parameters</div>
+        <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:12px;">
+          Statistical metrics computed for <strong>${esc(a.instrument_symbol)}</strong> on session <strong>${esc(a.event_date || a.detected_at)}</strong> against baseline historical sessions:
+        </p>
+
+        ${rowsHtml}
+
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.5;">
+          Threshold Basis: <strong style="color:var(--cyan);">${esc(evObj.threshold_basis || 'UNVALIDATED_HEURISTIC')}</strong><br>
+          Note: This is a statistical outlier screening flag, NOT a finding of manipulation.
+        </div>
+      </div>
+
+      <div class="card card-pad">
+        <div class="card-head-title" style="margin-bottom:8px;">Raw Alert Signature Payload</div>
+        <div class="code-dump" style="max-height:220px;overflow-y:auto;font-size:11px;">${esc(JSON.stringify(a, null, 2))}</div>
+      </div>
+    `;
   } else if (tabName === 'harm') {
     // Retail Harm Model
     body.innerHTML = `
@@ -2398,9 +2349,43 @@ async function testDetectorInteractive(detId) {
   }
 }
 
-function openSimulationLab() {
-  switchView('detectors');
-  alert('Forensics Simulation Lab activated. Select any of the 6 detection engines to trigger real-time order flow stress tests.');
+async function refreshRecentScanRuns() {
+  const box = document.getElementById('recentScanRunsBox');
+  if (!box) return;
+  try {
+    const res = await fetch('/api/live/scan/runs?limit=4');
+    const data = await res.json();
+    const runs = data.items || [];
+    if (!runs.length) {
+      box.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center;">No scan runs recorded yet. Click ▶ Run Live Scan to execute.</div>';
+      return;
+    }
+    box.innerHTML = runs.map(r => {
+      const isOk = r.status === 'ok';
+      const statusColor = isOk ? 'var(--emerald)' : (r.status === 'skipped' ? 'var(--amber)' : 'var(--crimson)');
+      const modeLabel = (r.mode || 'intraday').toUpperCase();
+      const elapsed = r.started_at && r.finished_at ? Math.max(1, Math.round((new Date(r.finished_at) - new Date(r.started_at))/1000)) : 1;
+      return `
+        <div style="background:#05080e;border:1px solid var(--border);border-radius:6px;padding:9px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:700;color:#fff;font-family:var(--font-display);font-size:12.5px;">
+              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${statusColor};margin-right:6px;"></span>
+              ${modeLabel} SCAN <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);font-weight:400;">#${esc((r.id||'').slice(0, 8))}</span>
+            </div>
+            <div style="font-size:10.5px;color:var(--text-dim);margin-top:2px;font-family:var(--font-mono);">
+              ${new Date(r.started_at).toLocaleTimeString('en-IN')} · Scanned: <b>${r.symbols_scanned}</b> · Detections: <b style="color:${r.detections>0?'var(--crimson)':'var(--text-muted)'}">${r.detections}</b>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <span class="tag ${isOk ? 'tag-clean' : 'tag-critical'}" style="font-size:10px;">${esc(r.status.toUpperCase())}</span>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:3px;font-family:var(--font-mono);">${elapsed}s duration</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<div style="color:var(--crimson);padding:15px;text-align:center;">Failed to load scan runs: ' + esc(e.message) + '</div>';
+  }
 }
 
 // Tab Switching & Hash Navigation
@@ -2509,15 +2494,21 @@ async function fyersPollStatus(){
     const r=await fetch('/api/live/status'),d=await r.json();
     const b=document.getElementById('fyersBadge');if(!b)return;
     const ut=document.getElementById('fyersUserTag');
+    const topBadge = document.getElementById('topUserBadge');
+    const topSub = document.getElementById('topUserSub');
     if(d.token_valid){
       // Show only a masked prefix, never the full app ID or client ID
       const prefix = d.app_id_prefix || 'Fyers';
       b.textContent='FYERS CONNECTED ('+prefix+')';b.className='green';
       if(ut) ut.textContent='Fyers API · Token valid';
+      if(topBadge) topBadge.textContent = d.client_name ? d.client_name.split(' ')[0] : 'Fyers Live';
+      if(topSub) { topSub.textContent = 'Token Active'; topSub.style.color = 'var(--emerald)'; }
       fyersRefreshPrices();
     } else {
       b.textContent='NOT CONNECTED — click to authenticate';b.className='amber';b.style.color='#e3b341';
       if(ut) ut.textContent='Fyers API · No token';
+      if(topBadge) topBadge.textContent = 'Fyers Auth';
+      if(topSub) { topSub.textContent = 'Login Required'; topSub.style.color = 'var(--amber)'; }
     }
   }catch(e){const b=document.getElementById('fyersBadge');if(b){b.textContent='API UNREACHABLE';b.className='';b.style.color='#f85149';}}
 }
