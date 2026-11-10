@@ -98,6 +98,10 @@ class FyersAuthManager:
     # ------------------------------------------------------------------
     def exchange_code_for_token(self, auth_code: str) -> str:
         """Exchange the OAuth2 auth code for an access token and persist it."""
+        auth_code = auth_code.strip()
+        if "auth_code=" in auth_code:
+            auth_code = auth_code.split("auth_code=")[1].split("&")[0]
+
         session = fyersModel.SessionModel(
             client_id=self._app_id,
             secret_key=self._secret_id,

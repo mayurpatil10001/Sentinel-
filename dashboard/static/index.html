@@ -943,6 +943,67 @@ button { cursor: pointer; }
 
         <!-- 4 Core Metrics -->
         
+        <!-- FYERS DAILY SESSION QUICK-CONNECT & AUTH CODE BOX -->
+        <div id="fyersQuickAuthCard" class="card card-pad" style="margin-bottom:16px;background:#0d1117;border:1px solid #30363d;border-left:4px solid #3fb950;transition:all 0.3s ease;">
+          
+          <!-- State A: Connected Banner (shown when token is valid) -->
+          <div id="dashAuthConnectedBanner" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3fb950;box-shadow:0 0 10px #3fb950;"></span>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="font-size:13px;font-weight:700;color:#3fb950;letter-spacing:0.04em;">FYERS LIVE SESSION ACTIVE</span>
+                  <span class="tag tag-clean" id="dashConnectedUser">Fyers API v3</span>
+                  <span class="tag tag-clean" id="dashConnectedExpiry">Session Valid Today</span>
+                </div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">
+                  Real-time market stream, option chains, and continuous anomaly detectors are live.
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="btn btn-sm" onclick="fyersRefreshPrices()" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;font-size:11px;padding:6px 12px;cursor:pointer;">
+                ↻ Refresh Live Ticks
+              </button>
+              <button class="btn btn-sm" onclick="toggleQuickAuthForm()" id="dashToggleFormBtn" style="background:#21262d;border:1px solid #30363d;color:#58a6ff;font-size:11px;padding:6px 12px;cursor:pointer;">
+                🔑 Re-Authenticate / Paste New Code
+              </button>
+            </div>
+          </div>
+
+          <!-- State B: Quick Auth Input Strip (shown when token is invalid or when toggled) -->
+          <div id="dashAuthFormContainer" style="display:none;margin-top:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#d29922;box-shadow:0 0 10px #d29922;"></span>
+                <span style="font-size:12px;font-weight:700;color:#e3b341;letter-spacing:0.06em;text-transform:uppercase;">
+                  Fyers Daily Quick-Connect
+                </span>
+                <span class="tag tag-high" style="font-size:10px;">Daily Auth Code Required</span>
+              </div>
+              <span style="font-size:11px;color:var(--text-dim);">Fyers tokens expire daily by SEBI/broker policy</span>
+            </div>
+
+            <p style="font-size:12px;color:#8b949e;margin:0 0 10px;line-height:1.4;">
+              <b>Daily Morning Flow:</b> Click <b>1. Open Fyers Login</b>, sign in, then paste your redirect URL or <code style="color:#58a6ff;background:#161b22;padding:1px 4px;border-radius:3px;">auth_code</code> in the box below to activate live streaming.
+            </p>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <button class="btn" id="dashGetUrlBtn" onclick="fyersQuickGetUrl()" style="background:#21262d;border:1px solid #30363d;color:#58a6ff;font-weight:600;font-size:12px;padding:8px 14px;white-space:nowrap;cursor:pointer;">
+                🔗 1. Open Fyers Login
+              </button>
+              <input id="dashAuthCodeInput" type="text" placeholder="2. Paste full redirect URL or auth_code here..."
+                style="flex:1;min-width:280px;background:#161b22;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:8px 12px;font-size:12px;font-family:monospace;"
+                onkeydown="if(event.key==='Enter')dashSubmitQuickAuth()">
+              <button class="btn btn-emerald" id="dashActivateBtn" onclick="dashSubmitQuickAuth()" style="font-weight:700;font-size:12px;padding:8px 16px;white-space:nowrap;cursor:pointer;">
+                ⚡ Activate Session
+              </button>
+            </div>
+            <div id="dashAuthMsg" style="margin-top:8px;font-size:12px;min-height:18px;"></div>
+          </div>
+
+        </div>
+
         <!-- LIVE MARKET QUOTE RIBBON (FYERS API v3) -->
         <div class="card card-pad" style="margin-bottom:18px;background:linear-gradient(180deg, #161b22 0%, #0d1117 100%);border:1px solid #30363d;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -2496,6 +2557,12 @@ async function fyersPollStatus(){
     const ut=document.getElementById('fyersUserTag');
     const topBadge = document.getElementById('topUserBadge');
     const topSub = document.getElementById('topUserSub');
+    const qCard = document.getElementById('fyersQuickAuthCard');
+    const connBanner = document.getElementById('dashAuthConnectedBanner');
+    const formCont = document.getElementById('dashAuthFormContainer');
+    const connUser = document.getElementById('dashConnectedUser');
+    const connExpiry = document.getElementById('dashConnectedExpiry');
+
     if(d.token_valid){
       // Show only a masked prefix, never the full app ID or client ID
       const prefix = d.app_id_prefix || 'Fyers';
@@ -2503,12 +2570,33 @@ async function fyersPollStatus(){
       if(ut) ut.textContent='Fyers API · Token valid';
       if(topBadge) topBadge.textContent = d.client_name ? d.client_name.split(' ')[0] : 'Fyers Live';
       if(topSub) { topSub.textContent = 'Token Active'; topSub.style.color = 'var(--emerald)'; }
+
+      // Update Quick Auth Box for Connected state
+      if (qCard) {
+        qCard.style.borderColor = '#238636';
+        qCard.style.borderLeft = '4px solid #3fb950';
+        qCard.style.background = '#0d1117';
+      }
+      if (connBanner) connBanner.style.display = 'flex';
+      if (formCont && !formCont.dataset.userOpened) formCont.style.display = 'none';
+      if (connUser) connUser.textContent = d.client_name ? d.client_name : 'Fyers API (' + prefix + ')';
+      if (connExpiry) connExpiry.textContent = d.token_date ? 'Valid Today (' + d.token_date + ')' : 'Session Valid Today';
+
       fyersRefreshPrices();
     } else {
       b.textContent='NOT CONNECTED — click to authenticate';b.className='amber';b.style.color='#e3b341';
       if(ut) ut.textContent='Fyers API · No token';
       if(topBadge) topBadge.textContent = 'Fyers Auth';
       if(topSub) { topSub.textContent = 'Login Required'; topSub.style.color = 'var(--amber)'; }
+
+      // Update Quick Auth Box for Disconnected / Morning state
+      if (qCard) {
+        qCard.style.borderColor = '#d29922';
+        qCard.style.borderLeft = '4px solid #d29922';
+        qCard.style.background = 'rgba(210, 153, 34, 0.05)';
+      }
+      if (connBanner) connBanner.style.display = 'none';
+      if (formCont) formCont.style.display = 'block';
     }
   }catch(e){const b=document.getElementById('fyersBadge');if(b){b.textContent='API UNREACHABLE';b.className='';b.style.color='#f85149';}}
 }
@@ -2613,6 +2701,102 @@ async function fyersRefreshPrices(){
     });
   }catch(e){console.warn('Fyers price refresh failed',e);}
 }
+function toggleQuickAuthForm() {
+  const formCont = document.getElementById('dashAuthFormContainer');
+  const btn = document.getElementById('dashToggleFormBtn');
+  if (!formCont) return;
+  if (formCont.style.display === 'none' || !formCont.style.display) {
+    formCont.style.display = 'block';
+    formCont.dataset.userOpened = 'true';
+    if (btn) btn.textContent = '✕ Close Quick Box';
+    setTimeout(() => { document.getElementById('dashAuthCodeInput')?.focus(); }, 50);
+  } else {
+    formCont.style.display = 'none';
+    delete formCont.dataset.userOpened;
+    if (btn) btn.textContent = '🔑 Re-Authenticate / Paste New Code';
+  }
+}
+
+async function fyersQuickGetUrl() {
+  const btn = document.getElementById('dashGetUrlBtn');
+  const msg = document.getElementById('dashAuthMsg');
+  const origText = btn ? btn.innerHTML : '1. Open Fyers Login';
+  if (btn) { btn.innerHTML = 'Opening...'; btn.disabled = true; }
+  if (msg) msg.innerHTML = '<span style="color:#8b949e">Generating Fyers login URL...</span>';
+
+  try {
+    const r = await fetch('/api/live/authenticate', { method: 'POST' });
+    const d = await r.json();
+    if (d.auth_url) {
+      window.open(d.auth_url, '_blank');
+      if (msg) {
+        msg.innerHTML = '<span style="color:#58a6ff">✓ Fyers login opened in a new tab! After signing in, copy the redirect URL and paste it in box (2) below.</span>';
+      }
+    } else {
+      if (msg) msg.innerHTML = '<span style="color:#f85149">Failed to generate login URL: ' + (d.detail || 'unknown error') + '</span>';
+    }
+  } catch (err) {
+    if (msg) msg.innerHTML = '<span style="color:#f85149">Network error: ' + err.message + '</span>';
+  } finally {
+    if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+  }
+}
+
+async function dashSubmitQuickAuth() {
+  const input = document.getElementById('dashAuthCodeInput');
+  const msg = document.getElementById('dashAuthMsg');
+  const btn = document.getElementById('dashActivateBtn');
+  const raw = (input ? input.value : '').trim();
+
+  if (!raw) {
+    if (msg) msg.innerHTML = '<span style="color:#f85149">⚠️ Please paste your redirect URL or auth_code into the box first.</span>';
+    return;
+  }
+
+  // Parse code cleanly
+  let code = raw;
+  if (raw.includes('auth_code=')) {
+    code = raw.split('auth_code=')[1].split('&')[0];
+  } else if (raw.includes('code=')) {
+    try {
+      const u = new URL(raw);
+      code = u.searchParams.get('auth_code') || u.searchParams.get('code') || raw;
+    } catch (e) {
+      code = raw.split('code=')[1].split('&')[0];
+    }
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Activating...'; }
+  if (msg) msg.innerHTML = '<span style="color:#8b949e">Exchanging auth code with Fyers API v3...</span>';
+
+  try {
+    const r = await fetch('/api/live/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auth_code: code })
+    });
+    const d = await r.json();
+    if (r.ok && d.status === 'ok') {
+      if (msg) msg.innerHTML = '<span style="color:#3fb950">✓ Success! ' + (d.message || 'Token active.') + '</span>';
+      if (input) input.value = '';
+      const formCont = document.getElementById('dashAuthFormContainer');
+      if (formCont) delete formCont.dataset.userOpened;
+      setTimeout(() => {
+        fyersPollStatus();
+        fyersRefreshPrices();
+        if (msg) msg.innerHTML = '';
+      }, 1500);
+    } else {
+      const errDetail = d.detail || d.message || JSON.stringify(d);
+      if (msg) msg.innerHTML = '<span style="color:#f85149">✕ Authentication failed: ' + errDetail + '</span>';
+    }
+  } catch (err) {
+    if (msg) msg.innerHTML = '<span style="color:#f85149">✕ Connection error: ' + err.message + '</span>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⚡ Activate Session'; }
+  }
+}
+
 async function fyersGetAuthUrl(){
   const btn=document.getElementById('fyersGetUrlBtn');
   btn.textContent='Generating...';btn.disabled=true;
@@ -2629,14 +2813,18 @@ async function fyersSubmitToken(){
   const st=document.getElementById('fyersAuthStatus');
   if(!raw){st.innerHTML='<span style="color:#f85149">Paste the redirect URL or auth_code first.</span>';return;}
   let code=raw;
-  try{const u=new URL(raw);code=u.searchParams.get('auth_code')||u.searchParams.get('code')||raw;}catch{}
+  if(raw.includes('auth_code=')){
+    code=raw.split('auth_code=')[1].split('&')[0];
+  } else if(raw.includes('code=')){
+    try{const u=new URL(raw);code=u.searchParams.get('auth_code')||u.searchParams.get('code')||raw;}catch{code=raw.split('code=')[1].split('&')[0];}
+  }
   st.innerHTML='<span style="color:#8b949e">Connecting to Fyers...</span>';
   try{
     const r=await fetch('/api/live/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auth_code:code})});
     const d=await r.json();
     if(r.ok&&d.status==='ok'){
       st.innerHTML='<span style="color:#3fb950">Connected: '+d.message+'</span>';
-      setTimeout(()=>{document.getElementById('fyersAuthModal').style.display='none';fyersPollStatus();},2000);
+      setTimeout(()=>{document.getElementById('fyersAuthModal').style.display='none';fyersPollStatus();fyersRefreshPrices();},1500);
     }else{st.innerHTML='<span style="color:#f85149">'+(d.detail||JSON.stringify(d))+'</span>';}
   }catch(e){st.innerHTML='<span style="color:#f85149">'+e.message+'</span>';}
 }
