@@ -47,7 +47,11 @@ FORBIDDEN = [
 ALLOWLIST: dict[str, list[str]] = {
     "FYERS_APP_ID_VALUE": [".env.example", "tests/test_security_secrets.py"],
     "FYERS_SECRET_VALUE": ["tests/test_security_secrets.py"],
-    "BROKER_CLIENT_ID":   ["tests/test_security_secrets.py"],
+    "BROKER_CLIENT_ID":   [
+        "tests/test_security_secrets.py",
+        "tests/test_phase5_reports.py",        # contains ID only in assert-not-present checks
+        "tests/test_phase6_frontend_honesty.py",  # same — checks removal was effective
+    ],
 }
 
 # File extensions to scan (source, templates, configs, scripts)
