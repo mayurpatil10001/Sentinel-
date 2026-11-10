@@ -60,3 +60,9 @@ inspect_wl.py
 *.jpg
 *.jpeg
 
+
+Sentinel-premium-frontend/
+
+upgrade_dashboard_ui.py
+dashboard/scripts/inject_fyers_modal.py
+dashboard/scripts/safe_patch_fyers.py

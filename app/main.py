@@ -50,6 +50,7 @@ from app.api.system import router as system_router
 from app.api.backtest_api import router as backtest_router
 from app.api.live_market import router as live_router
 from app.api.live_detect import router as live_detect_router
+from app.api.reports import router as reports_router
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,7 @@ app.include_router(system_router)
 app.include_router(backtest_router)
 app.include_router(live_router)          # Fyers live market data
 app.include_router(live_detect_router)   # Real-time detection scan + scan_runs
+app.include_router(reports_router)       # Phase 5: EOD watch reports
 
 
 # ── Dashboard static files ─────────────────────────────────────────────────────

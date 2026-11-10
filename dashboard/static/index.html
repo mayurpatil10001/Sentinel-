@@ -915,15 +915,17 @@ button { cursor: pointer; }
 
     <!-- LIVE TELEMETRY TICKER BAR -->
     <div class="telemetry-ticker">
-      <div>INGEST RATE: <b id="tickerIngest">48,250 msgs/s</b></div>
-      <div>DETECTION LATENCY: <b class="green" id="tickerLatency">0.38 ms</b></div>
+      <!-- NOTE: No fabricated ingest rate, latency or FP numbers.
+           All values below come from API responses or are stated as unknown. -->
+      <div>LAST SCAN: <b id="tickerLastScan" style="color:#8b949e">Loading…</b></div>
+      <div>SCAN DURATION: <b id="tickerLatency" style="color:#8b949e">—</b></div>
       <div>CIRCUIT BREAKER: <b class="green">NSE BHAVCOPY CLOSED (OPERATIONAL)</b></div>
       <div id="scanStatusBar" style="display:none;background:#1a1f2e;border:1px solid var(--crimson);border-radius:4px;padding:3px 10px;font-size:11px;color:#f85149;">
         ⚡ <span id="scanStatusText">Scanning…</span>
       </div>
       <div>FYERS LIVE: <b id="fyersBadge" style="cursor:pointer" onclick="document.getElementById('fyersAuthModal').style.display='flex'">CHECKING…</b></div>
       <div>CRYPTOGRAPHIC SEAL: <b>SHA-256 APPEND-ONLY</b></div>
-      <div>FALSE POSITIVE RATE: <b class="green">0.0% (90-DAY EMPIRICAL)</b></div>
+      <div>FP RATE: <b style="color:#8b949e">Not empirically measured</b></div>
     </div>
 
     <!-- MAIN VIEWPORT -->
@@ -992,11 +994,11 @@ button { cursor: pointer; }
 
           <div class="kpi-box">
             <div class="kpi-box-top">
-              <span>Empirical False Positive Rate</span>
-              <span class="tag tag-clean">Zero FP</span>
+              <span>False Positive Rate</span>
+              <span class="tag" style="background:#333;color:#8b949e">Not Measured</span>
             </div>
-            <div class="kpi-box-val" style="color:var(--emerald);">0.0%</div>
-            <div class="kpi-box-sub" style="color:var(--emerald);">90 liquid market days tested</div>
+            <div class="kpi-box-val" style="color:#8b949e;font-size:16px;">N/A</div>
+            <div class="kpi-box-sub" style="color:#8b949e;">No empirical FP measurement — all thresholds are UNVALIDATED_HEURISTIC</div>
           </div>
         </div>
 
@@ -1195,7 +1197,7 @@ button { cursor: pointer; }
           <div>
             <div class="view-breadcrumbs">Sentinel / <span>Surveillance Queue</span></div>
             <h2 class="view-title">Active Market Manipulation Signals</h2>
-            <p class="view-subtitle">Live detected order book layering, circular trade loops, and options volatility distortions.</p>
+            <p class="view-subtitle">Unusual-activity flags from OHLCV and option-chain scans. Sentinel detects statistical outliers only — it cannot detect order-book layering, circular trading, or spoofing without order/account-level data for all market participants (not available via broker APIs).</p>
           </div>
           <div style="display:flex;gap:8px;">
             <button class="btn" onclick="syncAllData()">↻ Sync Queue</button>
@@ -1304,8 +1306,9 @@ button { cursor: pointer; }
         <div class="card card-pad" style="margin-top:18px;">
           <div class="card-head-title" style="margin-bottom:6px;">Scientific & Empirical Honesty Disclosure</div>
           <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">
-            Every threshold is labeled transparently as <strong>HEURISTIC</strong>, <strong>SEBI CASE INFORMED</strong>, or <strong>EMPIRICALLY TESTED</strong>. 
-            Because account-level historical manipulation order-books are not public in India, no detector claims absolute validation against confirmed real manipulation cases. However, negative control testing across 90 trading days verifies a <strong>0.0% false-positive rate</strong>.
+            Every threshold is labelled transparently as <strong>UNVALIDATED_HEURISTIC</strong>. No SEBI order number, date, or URL has been verified as the source for any numeric threshold.
+            Sentinel cannot detect order-book spoofing, layering, circular trading, or coordinated manipulation without order/account-level data for all market participants (not available via broker APIs).
+            An alert is a <em>statistical outlier</em> — not a finding of manipulation. No false-positive rate has been empirically measured against confirmed cases.
           </p>
         </div>
       </section>
@@ -1329,9 +1332,9 @@ button { cursor: pointer; }
             <div class="kpi-box-sub" style="color:var(--emerald);">Liquid trading days tested</div>
           </div>
           <div class="kpi-box">
-            <div class="kpi-box-top"><span>Empirical False Positives</span><span class="tag tag-clean">Verified</span></div>
-            <div class="kpi-box-val" style="color:var(--emerald);">0 Alarms</div>
-            <div class="kpi-box-sub" style="color:var(--emerald);">0.0% false positive rate</div>
+            <div class="kpi-box-top"><span>Empirical False Positives</span><span class="tag" style="background:#333;color:#8b949e">Not Measured</span></div>
+            <div class="kpi-box-val" style="color:#8b949e;font-size:16px;">N/A</div>
+            <div class="kpi-box-sub" style="color:#8b949e;">No controlled FP study run yet</div>
           </div>
           <div class="kpi-box">
             <div class="kpi-box-top"><span>Cataloged SEBI Cases</span><span class="tag tag-medium">Historical</span></div>
@@ -1821,16 +1824,27 @@ function filterAlertsQueue() {
     else if (a.pattern_type.includes('pump')) pfutp = 'Reg 4(2)(r)';
     else if (a.pattern_type.includes('pinning')) pfutp = 'Reg 3 & 4(1)';
 
+    // Phase 4: SAMPLE DATA badge for synthetic_demo rows
+    const sampleBadge = a.is_sample_data
+      ? '<span style="background:#2a2000;color:#e3b341;border:1px solid #e3b341;border-radius:3px;font-size:9px;padding:1px 5px;margin-left:4px;vertical-align:middle">SAMPLE DATA</span>'
+      : '';
+    // Phase 1: show occurrence count if re-detected
+    const occBadge = (a.occurrences > 1)
+      ? `<span style="font-size:9px;color:#8b949e;margin-left:4px">${a.occurrences}×</span>`
+      : '';
+    // Phase 1: event_date is more reliable than window timestamps
+    const eventDate = a.event_date ? a.event_date : (a.window_end || a.window_start);
+
     return `
       <tr class="row-click" onclick="openAlertDossier('${esc(a.id)}')">
-        <td><div class="sym-primary">${esc(a.instrument_symbol)}</div><div class="sym-secondary">${esc(a.exchange)}</div></td>
-        <td><strong style="color:#fff;">${esc(a.pattern_type.replace(/_/g, ' '))}</strong></td>
+        <td><div class="sym-primary">${esc(a.instrument_symbol)}${sampleBadge}</div><div class="sym-secondary">${esc(a.exchange)}</div></td>
+        <td><strong style="color:#fff;">${esc(a.pattern_type.replace(/_/g, ' '))}</strong>${occBadge}</td>
         <td><span class="tag tag-medium">${pfutp}</span></td>
         <td>${sevPill(a.severity)}</td>
         <td><span style="font-family:var(--font-mono);font-size:11.5px;color:${a.score > 0.8 ? 'var(--crimson)' : 'var(--amber)'};">${(a.score ?? 0).toFixed(3)}</span></td>
         <td>${a.accounts_involved ?? '—'}</td>
         <td>${statusPill(a.status)}</td>
-        <td>${timeAgo(a.window_end || a.window_start)}</td>
+        <td>${eventDate ? timeAgo(eventDate) : '—'}</td>
         <td><button class="btn btn-emerald" style="padding:3px 9px;font-size:11px;">Open Dossier</button></td>
       </tr>
     `;
@@ -2640,22 +2654,63 @@ document.addEventListener('DOMContentLoaded',()=>{
   fyersPollStatus();
   setInterval(fyersPollStatus,30000);
   setInterval(fyersRefreshPrices,15000);
-  // Auto-refresh scan status after 2s to show last results
-  setTimeout(async()=>{
+
+  // ── Phase 6: auto-refresh scan status + alerts every 30s ─────────────────
+  // All status values are traced to real API responses — never hardcoded.
+  async function refreshScanStatus() {
+    try {
+      // /api/live/scan/runs — scan_runs table: single source of truth for
+      // "is processing happening?"
+      const runs = await fetch('/api/live/scan/runs?limit=1').then(r=>r.json());
+      const lastRun = runs && runs.length ? runs[0] : null;
+      if (lastRun) {
+        // Update ticker bar with real last-scan time and duration
+        const ticker = document.getElementById('tickerLastScan');
+        if (ticker && lastRun.finished_at) {
+          const t = new Date(lastRun.finished_at);
+          ticker.textContent = t.toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false})
+            + ' IST (' + lastRun.mode + ')';
+          ticker.className = lastRun.status === 'ok' ? 'green' : 'amber';
+        }
+        // Show real scan duration from DB, not a hardcoded value
+        const latEl = document.getElementById('tickerLatency');
+        if (latEl && lastRun.started_at && lastRun.finished_at) {
+          const ms = (new Date(lastRun.finished_at) - new Date(lastRun.started_at));
+          latEl.textContent = ms < 60000 ? (ms/1000).toFixed(1)+'s' : (ms/60000).toFixed(1)+'m';
+          latEl.style.color = '';
+        }
+        // Update last scan timestamp in scan card
+        const ts = document.getElementById('scanTimestamp');
+        if (ts && lastRun.finished_at)
+          ts.textContent = 'Last scan: ' + new Date(lastRun.finished_at).toLocaleTimeString('en-IN');
+      }
+    } catch(e) {}
+
     try {
       const ss = await fetch('/api/live/scan/status').then(r=>r.json());
-      if (ss.last_scan) {
-        const ts = document.getElementById('scanTimestamp');
-        if (ts) ts.textContent = 'Last scan: ' + new Date(ss.last_scan).toLocaleTimeString('en-IN');
-        if (ss.recent_detections && ss.recent_detections.length)
-          renderScanResults(ss.recent_detections);
-      }
-      // Load heatmap data
+      if (ss.recent_detections && ss.recent_detections.length)
+        renderScanResults(ss.recent_detections);
+    } catch(e) {}
+
+    // Auto-refresh alerts (source filter default excludes synthetic_demo)
+    try {
+      const aRes = await fetch('/api/alerts?page=1&page_size=150').then(r=>r.json());
+      state.alerts = aRes.items || [];
+      renderAlertsQueueTable();
+      renderCommandCenter();
+    } catch(e) {}
+
+    // Refresh heatmap
+    try {
       const hm = await fetch('/api/live/heatmap').then(r=>r.json());
       state.heatmap = hm.instruments || [];
       renderHeatmapReal();
     } catch(e) {}
-  }, 2000);
+  }
+
+  // Initial load after 2s, then every 30s
+  setTimeout(refreshScanStatus, 2000);
+  setInterval(refreshScanStatus, 30000);
 });
 </script>
 
