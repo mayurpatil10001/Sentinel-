@@ -35,6 +35,7 @@ DATA LIMITATIONS (always noted in results):
 """
 
 import logging
+import time
 import uuid
 from datetime import datetime, date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
@@ -50,7 +51,7 @@ IST = pytz.timezone("Asia/Kolkata")
 OPTION_CHAIN_UNDERLYINGS = {
     "NIFTY50":   "NSE:NIFTY50-INDEX",
     "BANKNIFTY": "NSE:NIFTYBANK-INDEX",
-    "FINNIFTY":  "NSE:NIFTYFIN-INDEX",
+    "FINNIFTY":  "NSE:FINNIFTY-INDEX",
 }
 
 # How many strikes on each side of ATM to fetch (affects API quota)
@@ -80,46 +81,84 @@ def _parse_fyers_chain(raw: Dict, underlying_name: str) -> Optional[pd.DataFrame
     #     "put_options":  {"greeks": {"oi": int, "iv": float}, "ltp": float},
     #     "underlying_value": float
     # }
-    # Layout may vary by API version. We handle both.
+    # Layout may vary by API version. We handle both the flat Fyers v3 optionsChain
+    # and the nested optionChainData.
     rows = []
-    option_data = raw.get("optionChainData", [])
-    if not option_data:
-        # Sometimes nested under "d"
-        option_data = raw.get("d", {}).get("optionChainData", [])
+    option_data = raw.get("optionChainData") or raw.get("d", {}).get("optionChainData")
+    flat_chain = raw.get("optionsChain") or raw.get("data", {}).get("optionsChain")
 
-    for item in option_data:
-        strike = float(item.get("strike_price", 0) or 0)
-        if strike <= 0:
-            continue
+    if flat_chain:
+        exp_data = raw.get("expiryData") or raw.get("data", {}).get("expiryData", [])
+        default_exp = None
+        if exp_data and isinstance(exp_data, list):
+            try:
+                d_str = exp_data[0].get("date", "")
+                default_exp = datetime.strptime(d_str, "%d-%m-%Y").date()
+            except Exception:
+                default_exp = None
 
-        # Parse expiry
-        expiry_raw = item.get("expiry", "")
-        try:
-            if len(expiry_raw) == 10 and expiry_raw[4] == "-":
-                expiry = date.fromisoformat(expiry_raw)
-            else:
-                expiry = datetime.strptime(expiry_raw, "%d-%b-%Y").date()
-        except (ValueError, TypeError):
-            continue
+        underlying_val = 0.0
+        for item in flat_chain:
+            if item.get("strike_price") == -1:
+                underlying_val = float(item.get("ltp", 0) or 0)
+                break
 
-        underlying_val = float(item.get("underlying_value", 0) or 0)
+        for item in flat_chain:
+            sp = float(item.get("strike_price", 0) or 0)
+            if sp <= 0:
+                continue
+            opt_type = item.get("option_type", "").upper()
+            if opt_type not in ("CE", "PE"):
+                continue
 
-        for opt_type, key in [("CE", "call_options"), ("PE", "put_options")]:
-            opt = item.get(key, {}) or {}
-            greeks = opt.get("greeks", {}) or {}
-            oi  = greeks.get("oi") or opt.get("oi")
-            iv  = greeks.get("iv") or opt.get("iv")
-            ltp = opt.get("ltp") or opt.get("last_price")
+            oi = item.get("oi")
+            ltp = item.get("ltp")
+            iv = item.get("iv") or item.get("greeks", {}).get("iv")
 
             rows.append({
-                "strike": strike,
-                "expiry": expiry,
+                "strike": sp,
+                "expiry": default_exp or date.today(),
                 "option_type": opt_type,
                 "oi": float(oi) if oi is not None else None,
                 "iv": float(iv) if iv is not None else None,
                 "ltp": float(ltp) if ltp is not None else None,
                 "underlying_value": underlying_val,
             })
+
+    elif option_data:
+        for item in option_data:
+            strike = float(item.get("strike_price", 0) or 0)
+            if strike <= 0:
+                continue
+
+            # Parse expiry
+            expiry_raw = item.get("expiry", "")
+            try:
+                if len(expiry_raw) == 10 and expiry_raw[4] == "-":
+                    expiry = date.fromisoformat(expiry_raw)
+                else:
+                    expiry = datetime.strptime(expiry_raw, "%d-%b-%Y").date()
+            except (ValueError, TypeError):
+                continue
+
+            underlying_val = float(item.get("underlying_value", 0) or 0)
+
+            for opt_type, key in [("CE", "call_options"), ("PE", "put_options")]:
+                opt = item.get(key, {}) or {}
+                greeks = opt.get("greeks", {}) or {}
+                oi  = greeks.get("oi") or opt.get("oi")
+                iv  = greeks.get("iv") or opt.get("iv")
+                ltp = opt.get("ltp") or opt.get("last_price")
+
+                rows.append({
+                    "strike": strike,
+                    "expiry": expiry,
+                    "option_type": opt_type,
+                    "oi": float(oi) if oi is not None else None,
+                    "iv": float(iv) if iv is not None else None,
+                    "ltp": float(ltp) if ltp is not None else None,
+                    "underlying_value": underlying_val,
+                })
 
     if not rows:
         logger.warning("No rows parsed from Fyers option chain for %s", underlying_name)
@@ -279,6 +318,7 @@ def run_derivative_detectors(
     today   = now_ist.date()
 
     for sym, fyers_sym in OPTION_CHAIN_UNDERLYINGS.items():
+        time.sleep(0.3)
         try:
             logger.info("[phase3] Fetching option chain for %s (%s)", sym, fyers_sym)
             raw_response = adapter.get_option_chain(fyers_sym, strike_count=CHAIN_STRIKE_COUNT)

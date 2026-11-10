@@ -83,7 +83,7 @@ WATCHLIST_15 = [
     "AXISBANK",
     "BAJFINANCE",
     "MARUTI",
-    "TATAMOTORS",
+    "TATASTEEL",
 ]
 
 SESSIONS_TARGET = 90  # 60–90 daily sessions
@@ -277,3 +277,4 @@ def run_fyers_backtest(
 
 if __name__ == "__main__":
     run_fyers_backtest()
+

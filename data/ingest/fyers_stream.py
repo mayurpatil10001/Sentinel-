@@ -295,7 +295,7 @@ class FyersMarketDataAdapter:
         )
         return {
             "underlying": underlying_symbol,
-            "raw": response.get("d", {}),
+            "raw": response.get("data") or response.get("d") or response,
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
 

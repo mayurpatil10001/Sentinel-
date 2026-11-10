@@ -123,3 +123,4 @@ class TestPhase8BacktestRunner:
 
         summary = report["detector_summary"]
         assert summary["momentum_reversal"]["trigger_count"] >= 1
+

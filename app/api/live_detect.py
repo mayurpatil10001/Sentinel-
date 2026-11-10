@@ -302,8 +302,8 @@ def _run_scan(
             logger.error("Scan error %s: %s", sym, e)
             skipped.append(f"{sym}: unexpected error — {e}")
 
-        # Rate-limit: ≤4 history calls/sec on Standard plan
-        time.sleep(0.25)
+        # Rate-limit: ≤3 history calls/sec (safely under Fyers Standard plan 5 req/sec limit)
+        time.sleep(0.35)
 
     # ── Step 3: Derivative detectors (Phase 3) ─────────────────────────────
     # Run OI concentration, OI-IV decoupling, option pinning, basis distortion
