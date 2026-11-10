@@ -42,3 +42,4 @@ fi
 
 echo "✓ Credential scan passed."
 exit 0
+

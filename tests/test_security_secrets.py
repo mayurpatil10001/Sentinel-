@@ -42,9 +42,12 @@ FORBIDDEN = [
     ("BROKER_CLIENT_ID", re.compile(r"FAA25578")),
 ]
 
-# Files where the pattern is allowed (e.g. .env.example placeholders)
+# Files where the pattern is allowed (e.g. .env.example placeholders, or the
+# security test itself which embeds the old values as regex pattern strings)
 ALLOWLIST: dict[str, list[str]] = {
-    "FYERS_APP_ID_VALUE": [".env.example"],  # only as a placeholder comment
+    "FYERS_APP_ID_VALUE": [".env.example", "tests/test_security_secrets.py"],
+    "FYERS_SECRET_VALUE": ["tests/test_security_secrets.py"],
+    "BROKER_CLIENT_ID":   ["tests/test_security_secrets.py"],
 }
 
 # File extensions to scan (source, templates, configs, scripts)
@@ -140,3 +143,4 @@ def test_no_default_green_badge():
         "dashboard/static/index.html is missing the fyersBadge element. "
         "The JS function fyersPollStatus() needs it to display connection state."
     )
+

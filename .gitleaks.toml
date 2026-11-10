@@ -35,3 +35,4 @@ paths = [
     '''tests/test_security_secrets.py''',  # the patterns appear as literals in the test
     '''.gitleaks.toml''',     # the patterns appear in rules
 ]
+

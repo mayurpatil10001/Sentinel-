@@ -49,3 +49,14 @@ data/cache/
 # OS
 .DS_Store
 Thumbs.db
+
+# One-off scripts and screenshots at repo root
+fix_redirect.py
+fyers_autoauth.py
+inspect_dashboard.py
+inspect_wl.py
+*.png
+*.pdf
+*.jpg
+*.jpeg
+

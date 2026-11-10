@@ -48,6 +48,8 @@ from app.detection.option_pinning import (
     PIN_OI_DOMINANCE_THRESHOLD,
 )
 
+from app.detection.threshold_registry import api_view as _registry_api_view
+
 router = APIRouter(prefix="/api/system", tags=["system"])
 
 # Path to persisted engineering health JSON (written by dashboard/scripts/run_and_save_health.py)
@@ -283,6 +285,12 @@ def get_detector_status():
             "All 6 detectors have HEURISTIC or UNVALIDATED thresholds — see threshold_labels per detector."
         ),
         "detectors": detectors,
+        "threshold_registry": _registry_api_view(),
+        "data_note": (
+            "All detection thresholds are UNVALIDATED_HEURISTIC. No SEBI order number, "
+            "date, or URL has been verified as the source for any numeric threshold. "
+            "These are starting points for screening — not findings of manipulation."
+        ),
     }
 
 
@@ -317,3 +325,31 @@ def get_engineering_health():
             "error": str(exc),
             "file": str(_HEALTH_FILE),
         }
+
+
+# ── /api/system/mode ──────────────────────────────────────────────────────────
+
+@router.get("/mode")
+def get_mode():
+    """
+    Returns current operational mode: 'live' or 'demo'.
+    Set SENTINEL_MODE=demo to enable demo mode (seeds show synthetic data).
+    Default is 'live' (empty DB, only real Fyers scan data).
+    Never hardcoded in HTML — always read from this endpoint.
+    """
+    import os
+    mode = os.environ.get("SENTINEL_MODE", "live").lower()
+    if mode not in ("live", "demo"):
+        mode = "live"
+    return {
+        "mode": mode,
+        "description": (
+            "live: DB contains only real Fyers scan data. "
+            "demo: DB may contain synthetic_demo rows from seed scripts."
+        ),
+        "synthetic_demo_visible": mode == "demo",
+        "note": (
+            "API endpoints exclude synthetic_demo rows by default. "
+            "Pass ?source=synthetic_demo or enable demo mode to include them."
+        ),
+    }
