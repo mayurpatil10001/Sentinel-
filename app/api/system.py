@@ -200,10 +200,18 @@ def get_detector_status():
         }
 
     detectors = [
+        # ── Detectors requiring order/account-level data (NOT available via broker API) ──
         {
             "id": "spoofing",
             "file": "app/detection/spoofing.py",
             "description": "Cancel-heavy order layering with price impact",
+            "data_availability": "NOT_ACTIVE",
+            "data_note": (
+                "Requires order/account-level data — not available via broker API. "
+                "Needs full order-lifecycle feed (place → modify → cancel → execute) "
+                "for ALL market participants, not just this account. "
+                "This detector is INACTIVE and must NOT be counted as running."
+            ),
             "thresholds": {
                 "MIN_CANCEL_RATIO": MIN_CANCEL_RATIO,
                 "MIN_SIZE_MULTIPLE": MIN_SIZE_MULTIPLE,
@@ -216,6 +224,13 @@ def get_detector_status():
             "id": "circular_trading",
             "file": "app/detection/circular_trading.py",
             "description": "Account-ring cycle detection via directed graph",
+            "data_availability": "NOT_ACTIVE",
+            "data_note": (
+                "Requires order/account-level data — not available via broker API. "
+                "Needs trade-level data (buyer account ID, seller account ID per trade) "
+                "for ALL participants. Only available via exchange/SEBI-level data feed. "
+                "This detector is INACTIVE and must NOT be counted as running."
+            ),
             "thresholds": {
                 "MAX_CYCLE_LENGTH": MAX_CYCLE_LENGTH,
                 "NET_POSITION_THRESHOLD": NET_POSITION_THRESHOLD,
@@ -229,6 +244,12 @@ def get_detector_status():
             "id": "coordinated_pump",
             "file": "app/detection/coordinated_pump.py",
             "description": "Dormant-account coordinated buying + volume spike",
+            "data_availability": "NOT_ACTIVE",
+            "data_note": (
+                "Requires order/account-level data — not available via broker API. "
+                "Needs account identity for every trade in the market. "
+                "This detector is INACTIVE and must NOT be counted as running."
+            ),
             "thresholds": {
                 "MIN_COORDINATING_ACCOUNTS": MIN_COORDINATING_ACCOUNTS,
                 "VOLUME_SPIKE_MULTIPLE": VOLUME_SPIKE_MULTIPLE,
@@ -236,10 +257,19 @@ def get_detector_status():
             "threshold_labels": "HEURISTIC",
             **vstatus("coordinated_pump"),
         },
+        # ── Detectors connected to Fyers API (Phase 3) ──────────────────────────
         {
             "id": "oi_manipulation",
             "file": "app/detection/oi_manipulation.py",
+            "adapter": "app/detection/fyers_adapters.py",
             "description": "Open interest concentration + IV decoupling",
+            "data_availability": "ACTIVE",
+            "data_note": (
+                "Connected to Fyers get_option_chain(). "
+                "OI-IV decoupling requires TWO consecutive chain snapshots (stored in "
+                "option_chain_snapshots table). Fyers provides only current OI — no "
+                "historical OI endpoint. First scan cannot run OI-IV decoupling."
+            ),
             "thresholds": {
                 "OI_CONCENTRATION_THRESHOLD": OI_CONCENTRATION_THRESHOLD,
                 "OI_VELOCITY_THRESHOLD": OI_VELOCITY_THRESHOLD,
@@ -251,7 +281,14 @@ def get_detector_status():
         {
             "id": "basis_distortion",
             "file": "app/detection/basis_distortion.py",
+            "adapter": "app/detection/fyers_adapters.py",
             "description": "Futures/spot spread vs fair-value excess contango/backwardation",
+            "data_availability": "ACTIVE",
+            "data_note": (
+                "Connected to Fyers quotes for the near-month futures contract. "
+                "Futures symbol resolved from the nearest expiry in the option chain — "
+                "NOT a hardcoded expiry string. Skipped if futures symbol cannot be resolved."
+            ),
             "thresholds": {
                 "BASIS_DEVIATION_THRESHOLD": BASIS_DEVIATION_THRESHOLD,
             },
@@ -261,7 +298,14 @@ def get_detector_status():
         {
             "id": "option_pinning",
             "file": "app/detection/option_pinning.py",
+            "adapter": "app/detection/fyers_adapters.py",
             "description": "Strike OI dominance on near-expiry (max pain manipulation)",
+            "data_availability": "ACTIVE_CONDITIONAL",
+            "data_note": (
+                "Connected to Fyers option chain. Only runs within PIN_EXPIRY_DAYS_THRESHOLD "
+                "(default 2 calendar days) of expiry. Outside this window, detection is skipped "
+                "automatically — proximity to a high-OI strike outside expiry window is normal."
+            ),
             "thresholds": {
                 "PIN_DISTANCE_THRESHOLD": PIN_DISTANCE_THRESHOLD,
                 "PIN_EXPIRY_DAYS_THRESHOLD": PIN_EXPIRY_DAYS_THRESHOLD,
@@ -272,17 +316,28 @@ def get_detector_status():
         },
     ]
 
-    validated_count = sum(1 for d in detectors if d.get("validated_against_real_manipulation"))
+    validated_count   = sum(1 for d in detectors if d.get("validated_against_real_manipulation"))
     neg_control_count = sum(1 for d in detectors if d.get("negative_control_tested"))
+    active_count      = sum(1 for d in detectors if d.get("data_availability") in ("ACTIVE", "ACTIVE_CONDITIONAL"))
+    inactive_count    = sum(1 for d in detectors if d.get("data_availability") == "NOT_ACTIVE")
 
     return {
         "total_detectors": len(detectors),
+        "active_detectors": active_count,
+        "inactive_detectors": inactive_count,
+        "inactive_reason": (
+            f"{inactive_count} detector(s) marked NOT_ACTIVE because they require "
+            "order/account-level data for ALL market participants — not available "
+            "via broker APIs (Fyers, Kite, Breeze). These are NEVER run and must "
+            "NOT be shown as 'active' in any UI."
+        ),
         "validated_against_real_manipulation": validated_count,
         "negative_control_tested": neg_control_count,
         "honest_summary": (
-            f"{validated_count} of 6 detectors validated against confirmed manipulation cases. "
-            f"{neg_control_count} of 6 tested via negative control (0.0% FP on 90 real NSE days). "
-            "All 6 detectors have HEURISTIC or UNVALIDATED thresholds — see threshold_labels per detector."
+            f"{active_count} of 6 detectors connected to real Fyers data. "
+            f"{inactive_count} detectors INACTIVE (require order/account-level data unavailable via broker API). "
+            f"{validated_count} validated against confirmed manipulation cases. "
+            "All thresholds are UNVALIDATED_HEURISTIC."
         ),
         "detectors": detectors,
         "threshold_registry": _registry_api_view(),

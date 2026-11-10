@@ -631,3 +631,4 @@ def _bar_date_helper(bar: Dict) -> Optional[date]:
 # Monkey-patch so the test import succeeds
 import app.workers.detection_worker as _dw
 _dw._bar_date_helper = _bar_date_helper
+

@@ -305,6 +305,41 @@ def _run_scan(
         # Rate-limit: ≤4 history calls/sec on Standard plan
         time.sleep(0.25)
 
+    # ── Step 3: Derivative detectors (Phase 3) ─────────────────────────────
+    # Run OI concentration, OI-IV decoupling, option pinning, basis distortion
+    # for NIFTY50/BANKNIFTY/FINNIFTY using the full app/detection/ detector set.
+    try:
+        from app.detection.fyers_adapters import run_derivative_detectors
+        deriv_dets = run_derivative_detectors(adapter, db, scan_run_id=scan_id)
+        for d in deriv_dets:
+            # Derivative detections are keyed to the index instrument in DB
+            sym_key = d.get("underlying", "")
+            inst = db.query(Instrument).filter(
+                Instrument.symbol == sym_key, Instrument.exchange == "NSE"
+            ).first()
+            if not inst:
+                skipped.append(f"{sym_key}: instrument not in DB (derivative detection)")
+                continue
+            a, is_new = _persist_or_update(db, inst, d, source=source)
+            if is_new:
+                alerts_n += 1
+            else:
+                alerts_upd += 1
+            summaries.append({
+                "symbol": sym_key,
+                "pattern": d["pattern_type"],
+                "severity": d["severity"],
+                "score": d["score"],
+                "event_date": str(d.get("event_date", "")),
+                "new_alert": is_new,
+                "occurrences": a.occurrences if a else 1,
+                "explanation_short": d["explanation"][:300],
+                "detector_type": "derivative",
+            })
+    except Exception as e:
+        logger.error("Derivative detector step failed: %s", e, exc_info=True)
+        skipped.append(f"derivative_detectors: error — {e}")
+
     _finish_scan(
         db, scan_run, "ok", None, started_at,
         symbols_scanned=scanned,

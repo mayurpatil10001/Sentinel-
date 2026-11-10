@@ -17,6 +17,14 @@ class AlertOut(BaseModel):
     explanation: str
     status: str
     escalated_to_sebi: bool
+    # Phase 4: provenance fields — always present in API response.
+    # source values: live_fyers | eod_history | synthetic_demo | backtest
+    source: str = "live_fyers"
+    event_date: Optional[str] = None      # ISO date string, e.g. "2026-11-10"
+    occurrences: int = 1
+    last_seen_at: Optional[datetime] = None
+    # UI badge: "SAMPLE DATA" if source == "synthetic_demo"
+    is_sample_data: bool = False
 
     class Config:
         from_attributes = True

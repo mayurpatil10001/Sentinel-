@@ -7,6 +7,12 @@ Extended alert endpoints:
   GET    /api/alerts/{id}               — single alert detail
   PATCH  /api/alerts/{id}/status        — lifecycle transition via alert manager
   POST   /api/alerts/{id}/escalate-to-sebi — generate real SEBI SAR draft
+
+Phase 4: provenance filtering
+  - ?source=live_fyers|eod_history|synthetic_demo|backtest filters by source.
+  - By default, synthetic_demo rows are EXCLUDED (they are seeded demo data,
+    not real detections). Pass ?source=synthetic_demo or ?include_demo=true to
+    include them. Every synthetic_demo row is marked with is_sample_data=True.
 """
 from datetime import datetime
 from typing import Optional
@@ -27,6 +33,13 @@ router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 # ── Helper ─────────────────────────────────────────────────────────────────────
 
 def _alert_to_out(a: Alert) -> AlertOut:
+    source = getattr(a, "source", "live_fyers") or "live_fyers"
+    event_date_str = None
+    if getattr(a, "event_date", None) is not None:
+        try:
+            event_date_str = a.event_date.isoformat()
+        except Exception:
+            pass
     return AlertOut(
         id=a.id,
         instrument_symbol=a.instrument.symbol,
@@ -40,10 +53,19 @@ def _alert_to_out(a: Alert) -> AlertOut:
         explanation=a.explanation,
         status=a.status,
         escalated_to_sebi=a.escalated_to_sebi,
+        # Phase 4 provenance fields
+        source=source,
+        event_date=event_date_str,
+        occurrences=getattr(a, "occurrences", 1) or 1,
+        last_seen_at=getattr(a, "last_seen_at", None),
+        is_sample_data=(source == "synthetic_demo"),
     )
 
 
 # ── GET /api/alerts ────────────────────────────────────────────────────────────
+
+# Valid source values (Phase 4 provenance)
+_VALID_SOURCES = {"live_fyers", "eod_history", "synthetic_demo", "backtest"}
 
 @router.get("", response_model=dict)
 def list_alerts_filtered(
@@ -55,14 +77,53 @@ def list_alerts_filtered(
     to_dt: Optional[datetime] = Query(None, description="ISO8601 datetime"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    # Phase 4: source filter. Default excludes synthetic_demo.
+    # Pass ?source=synthetic_demo to show ONLY demo data.
+    # Pass ?include_demo=true to include synthetic_demo alongside live data.
+    source: Optional[str] = Query(
+        None,
+        description=(
+            "Filter by data provenance: live_fyers|eod_history|synthetic_demo|backtest. "
+            "By default, synthetic_demo rows are excluded (they are seeded demo data, "
+            "not real detections). Pass ?source=synthetic_demo to see only demo data, "
+            "or ?include_demo=true to mix demo with real."
+        ),
+    ),
+    include_demo: bool = Query(
+        False,
+        description="Include synthetic_demo rows alongside real data. Default false.",
+    ),
     db: Session = Depends(get_db),
 ):
     """
     Filterable, paginated alert listing. All filters are optional.
-    Returns: { total, page, page_size, items: [AlertOut] }
+
+    Phase 4 provenance:
+    - By default, synthetic_demo rows are EXCLUDED. These are seeded demo
+      rows not produced by real scans. The UI must label every row that has
+      is_sample_data=True with a visible 'SAMPLE DATA' badge.
+    - Pass ?include_demo=true to include synthetic_demo alongside real data.
+    - Pass ?source=synthetic_demo to show ONLY synthetic_demo rows.
+
+    Returns: { total, page, page_size, source_filter, items: [AlertOut] }
     Every field traces back to a real Alert DB row.
     """
+    if source and source not in _VALID_SOURCES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid source '{source}'. Must be one of: {sorted(_VALID_SOURCES)}",
+        )
+
     q = db.query(Alert).join(Alert.instrument)
+
+    # Phase 4: provenance filter
+    if source:
+        # Explicit source requested — show only that source
+        q = q.filter(Alert.source == source)
+    elif not include_demo:
+        # Default: exclude synthetic_demo
+        q = q.filter(Alert.source != "synthetic_demo")
+    # else include_demo=True: no filter, return all sources
 
     if severity:
         q = q.filter(Alert.severity == severity)
@@ -89,6 +150,9 @@ def list_alerts_filtered(
         "total": total,
         "page": page,
         "page_size": page_size,
+        # Phase 4: tell the client exactly what filter was applied
+        "source_filter": source or ("all_except_demo" if not include_demo else "all"),
+        "demo_included": include_demo or (source == "synthetic_demo"),
         "items": [_alert_to_out(a).model_dump() for a in alerts],
     }
 
