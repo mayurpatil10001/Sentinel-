@@ -39,6 +39,7 @@ from app.api.audit import router as audit_router
 from app.api.system import router as system_router
 from app.api.backtest_api import router as backtest_router
 from app.api.live_market import router as live_router
+from app.api.live_detect import router as live_detect_router
 
 app = FastAPI(
     title="Sentinel — Market Surveillance Platform",
@@ -78,6 +79,7 @@ app.include_router(audit_router)
 app.include_router(system_router)
 app.include_router(backtest_router)
 app.include_router(live_router)      # Fyers live market data
+app.include_router(live_detect_router)  # Real-time detection scan
 
 # ── Dashboard static files ─────────────────────────────────────────────────────
 _DASHBOARD_STATIC = pathlib.Path(__file__).parent.parent / "dashboard" / "static"
