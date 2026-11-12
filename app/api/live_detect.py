@@ -122,6 +122,10 @@ def _persist_or_update(
         if det["score"] > existing.score:
             existing.score    = det["score"]
             existing.severity = det["severity"]
+        # Always update ML score (new run = fresher model or more context)
+        if det.get("ml_anomaly_score") is not None:
+            existing.ml_anomaly_score = det["ml_anomaly_score"]
+            existing.score_method     = det.get("score_method", "heuristic")
         try:
             db.commit()
             db.refresh(existing)
@@ -138,6 +142,8 @@ def _persist_or_update(
             pattern_type=det["pattern_type"],
             severity=det["severity"],
             score=det["score"],
+            ml_anomaly_score=det.get("ml_anomaly_score"),
+            score_method=det.get("score_method", "heuristic"),
             accounts_involved=[],
             window_start=w_start,
             window_end=w_end,

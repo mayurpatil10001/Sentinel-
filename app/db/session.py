@@ -41,6 +41,10 @@ def _safe_migrate_columns():
                 conn.execute(text("ALTER TABLE alerts ADD COLUMN occurrences INTEGER DEFAULT 1"))
             if "source" not in alert_cols:
                 conn.execute(text("ALTER TABLE alerts ADD COLUMN source VARCHAR(32) DEFAULT 'synthetic_demo'"))
+            if "ml_anomaly_score" not in alert_cols:
+                conn.execute(text("ALTER TABLE alerts ADD COLUMN ml_anomaly_score FLOAT"))
+            if "score_method" not in alert_cols:
+                conn.execute(text("ALTER TABLE alerts ADD COLUMN score_method VARCHAR(32)"))
             conn.commit()
 
 

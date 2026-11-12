@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "feature_dim": 7,
+  "feature_names": [
+    "vol_spike_score",
+    "price_anomaly_score",
+    "thin_vol_score",
+    "momentum_score",
+    "sustained_vol_score",
+    "n_detectors_firing_norm",
+    "max_single_score"
+  ],
+  "training_set_size": 770,
+  "trained_at": "2026-11-12T18:15:16.265139Z",
+  "contamination": 0.05,
+  "n_estimators": 200,
+  "note": "UNVALIDATED_HEURISTIC \u2014 no confirmed manipulation ground truth. Score = anomalousness relative to training baseline distribution."
+}

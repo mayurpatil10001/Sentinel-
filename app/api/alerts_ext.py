@@ -47,6 +47,8 @@ def _alert_to_out(a: Alert) -> AlertOut:
         pattern_type=a.pattern_type,
         severity=a.severity,
         score=a.score,
+        ml_anomaly_score=getattr(a, "ml_anomaly_score", None),
+        score_method=getattr(a, "score_method", None) or "heuristic",
         accounts_involved=a.accounts_involved,
         window_start=a.window_start,
         window_end=a.window_end,

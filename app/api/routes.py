@@ -87,12 +87,19 @@ def list_alerts(db: Session = Depends(get_db)):
             pattern_type=a.pattern_type,
             severity=a.severity,
             score=a.score,
+            ml_anomaly_score=getattr(a, "ml_anomaly_score", None),
+            score_method=getattr(a, "score_method", None) or "heuristic",
             accounts_involved=a.accounts_involved,
             window_start=a.window_start,
             window_end=a.window_end,
             explanation=a.explanation,
             status=a.status,
             escalated_to_sebi=a.escalated_to_sebi,
+            source=getattr(a, "source", "live_fyers"),
+            event_date=str(a.event_date) if getattr(a, "event_date", None) else None,
+            occurrences=getattr(a, "occurrences", 1),
+            last_seen_at=getattr(a, "last_seen_at", None),
+            is_sample_data=(getattr(a, "source", "") == "synthetic_demo"),
         )
         for a in alerts
     ]

@@ -10,7 +10,15 @@ class AlertOut(BaseModel):
     exchange: str
     pattern_type: str
     severity: str
+    # heuristic_score: z-score / volume-ratio normalized to [0,1] by the triggering detector.
+    # This is NOT an ML confidence — it is a hand-coded statistical threshold formula.
     score: float
+    # ml_anomaly_score: Isolation Forest anomaly score [0,1] from OHLCVScorer.
+    # None = model not yet trained (heuristic-only mode).
+    # NOT a manipulation probability — anomalousness relative to baseline distribution.
+    ml_anomaly_score: Optional[float] = None
+    # score_method: how the score was computed ('heuristic' | 'heuristic+if')
+    score_method: str = "heuristic"
     accounts_involved: list
     window_start: datetime
     window_end: datetime

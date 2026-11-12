@@ -650,6 +650,30 @@ def run_detection_for_symbol(
             except Exception as e:
                 logger.debug("OI chain failed for %s: %s", symbol, e)
 
+        # ── ML anomaly scoring — applied across ALL detections ────────────
+        # Groups detections by event_date and scores each (symbol, date) pair
+        # using the OHLCV Isolation Forest (or heuristic fallback if no model).
+        # Adds ml_anomaly_score and score_method to each detection dict.
+        if detections:
+            try:
+                from app.ml.ohlcv_scorer import build_feature_vector, get_scorer
+                from collections import defaultdict
+
+                # Group by event_date so multi-detector sessions score together
+                by_date: dict = defaultdict(list)
+                for det in detections:
+                    by_date[det.get("event_date", date.today())].append(det)
+
+                scorer = get_scorer()
+                for ev_date, dets_for_date in by_date.items():
+                    fv = build_feature_vector(symbol, ev_date, dets_for_date)
+                    ml_score, method = scorer.score(fv)
+                    for det in dets_for_date:
+                        det["ml_anomaly_score"] = ml_score
+                        det["score_method"] = method
+            except Exception as ml_exc:
+                logger.debug("ML scoring skipped for %s: %s", symbol, ml_exc)
+
     except Exception as e:
         logger.error("Detection failed for %s: %s", symbol, e, exc_info=True)
         return [], f"unexpected error: {e}"

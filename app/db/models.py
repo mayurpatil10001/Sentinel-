@@ -208,7 +208,12 @@ class Alert(Base):
     instrument_id = Column(String(36), ForeignKey("instruments.id"), nullable=False)
     pattern_type = Column(String(64), nullable=False, index=True)  # e.g. "volume_spike"
     severity = Column(String(16), nullable=False)  # low/medium/high/critical
-    score = Column(Float, nullable=False)  # 0-1, normalized
+    score = Column(Float, nullable=False)  # 0-1, heuristic score from the triggering detector
+    # ML anomaly score from OHLCVScorer Isolation Forest (None if model not yet trained).
+    # This is a distributional anomalousness score, NOT a manipulation probability.
+    # See app/ml/ohlcv_scorer.py for full provenance and honest description.
+    ml_anomaly_score = Column(Float, nullable=True)   # 0-1, None = heuristic-only mode
+    score_method = Column(String(32), nullable=True)  # 'heuristic' | 'heuristic+if'
 
     accounts_involved = Column(JSON, nullable=False)  # list of account_ids
     window_start = Column(DateTime, nullable=False)   # 09:15 IST of event_date (kept for compat)
