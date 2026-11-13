@@ -66,31 +66,40 @@ THRESHOLDS: Dict[str, Dict[str, Any]] = {
 
     # ── Price z-score thresholds ──────────────────────────────────────────
     "zscore_medium": {
-        "value": 2.5,
+        "value": 4.0,
         "basis": "UNVALIDATED_HEURISTIC",
         "citation": "none",
         "validated": False,
         "notes": (
             "Originally labelled 'SEBI CASE — 2.5σ cited in multiple orders'. "
             "z-score of 2.5 is a standard statistical outlier threshold (≈1.2% tail); "
-            "it is NOT sourced from a specific SEBI order. 2.5σ is a reasonable "
-            "starting point for screening but has NOT been calibrated against confirmed "
-            "Indian market manipulation cases."
+            "it is NOT sourced from a specific SEBI order. "
+            "Raised from 2.5 to 4.0 after E9 calibration (2026-11-13): "
+            "300 synthetic non-manipulated Student-t df=4 series produced a 17% "
+            "false-alert rate at 2.5σ; at 4.0σ the rate drops to 4.3% (within the "
+            "≤5% budget) while pump detection (12× vol, +9%) remains 100%. "
+            "Still UNVALIDATED — not tied to any SEBI order."
         ),
     },
     "zscore_high": {
-        "value": 3.5,
+        "value": 5.5,
         "basis": "UNVALIDATED_HEURISTIC",
         "citation": "none",
         "validated": False,
-        "notes": "Same provenance as zscore_medium.",
+        "notes": (
+            "Originally 3.5. Raised to 5.5 (2026-11-13) to maintain a 1.5-unit "
+            "gap above the new zscore_medium of 4.0. UNVALIDATED_HEURISTIC."
+        ),
     },
     "zscore_critical": {
-        "value": 5.0,
+        "value": 7.0,
         "basis": "UNVALIDATED_HEURISTIC",
         "citation": "none",
         "validated": False,
-        "notes": "Same provenance as zscore_medium.",
+        "notes": (
+            "Originally 5.0. Raised to 7.0 (2026-11-13) to maintain a 1.5-unit "
+            "gap above the new zscore_high of 5.5. UNVALIDATED_HEURISTIC."
+        ),
     },
 
     # ── Thin-volume pump thresholds ───────────────────────────────────────
