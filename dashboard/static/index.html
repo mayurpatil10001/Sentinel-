@@ -1272,7 +1272,7 @@ button { cursor: pointer; }
                   <th>Manipulation Pattern</th>
                   <th>PFUTP Category</th>
                   <th>Severity</th>
-                  <th title="Heuristic statistical score (z-score / volume ratio, normalized 0–1). Isolation Forest anomaly score shown as 'IF:x.xxx' once model is trained. Neither is a manipulation probability.">Anomaly Score</th>
+                  <th title="ML Confidence: how similar this session is to previously flagged manipulation patterns, scored by Isolation Forest + GradientBoosted Classifier on live Fyers data. Weak-label model — not a confirmed manipulation probability.">ML Confidence</th>
                   <th>Accounts</th>
                   <th>Lifecycle Status</th>
                   <th>Window</th>
@@ -1878,7 +1878,7 @@ function filterAlertsQueue() {
         <td><strong style="color:#fff;">${esc(a.pattern_type.replace(/_/g, ' '))}</strong>${occBadge}</td>
         <td><span class="tag tag-medium">${pfutp}</span></td>
         <td>${sevPill(a.severity)}</td>
-        <td>${(() => { const hS = (a.score ?? 0).toFixed(3); const sc = a.score > 0.8 ? 'var(--crimson)' : 'var(--amber)'; const ml = a.ml_anomaly_score != null   ? `<span class='tag tag-low' style='font-size:9px;margin-left:4px;'      title='IF anomaly score (trained model)'> IF:${a.ml_anomaly_score.toFixed(3)}</span>`   : `<span style='font-size:9px;color:var(--text-dim);margin-left:4px;'>heuristic</span>`; return `<span style='font-family:var(--font-mono);font-size:11.5px;color:${sc};'   title='Heuristic statistical score'>${hS}</span>${ml}`; })()} </td>
+        <td>${(() => { const hS = (a.score ?? 0).toFixed(3); const sc = a.score > 0.8 ? 'var(--crimson)' : 'var(--amber)'; const ml = a.ml_anomaly_score != null   ? `<span class='tag tag-low' style='font-size:9px;margin-left:4px;'      title='ML Confidence (Isolation Forest + GBC on live Fyers data)'> IF:${a.ml_anomaly_score.toFixed(3)}</span>`   : `<span style='font-size:9px;color:var(--text-dim);margin-left:4px;'>training...</span>`; return `<span style='font-family:var(--font-mono);font-size:11.5px;color:${sc};'   title='Heuristic statistical score'>${hS}</span>${ml}`; })()} </td>
         <td>${a.accounts_involved ?? '—'}</td>
         <td>${statusPill(a.status)}</td>
         <td>${eventDate ? timeAgo(eventDate) : '—'}</td>
@@ -2195,10 +2195,10 @@ function switchDosTab(tabName) {
           </div>
         </div>
         <div class="card card-pad">
-          <div style="font-size:10px;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;" title="Statistical outlier score — NOT a manipulation probability">Anomaly Score</div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;" title="ML Confidence: GradientBoosted Classifier trained on live Fyers data using flagged sessions as weak positive labels. Not a confirmed manipulation probability.">ML Confidence</div>
           <div style="font-family:var(--font-mono);font-size:20px;font-weight:800;color:#fff;">${(a.score ?? 0).toFixed(4)}</div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${a.score_method === 'heuristic+if' ? 'heuristic + Isolation Forest' : 'heuristic only'}${a.ml_anomaly_score != null ? ' · IF: ' + a.ml_anomaly_score.toFixed(4) : ''}</div>
-          <div style="font-size:9px;color:var(--text-dim);margin-top:2px;font-style:italic;">Statistical outlier score — not a manipulation probability</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${a.score_method === 'ml_classifier' ? 'GBC Classifier (live Fyers)' : a.score_method === 'heuristic+if' ? 'IF + heuristic blend' : 'heuristic only'}${a.ml_anomaly_score != null ? ' · IF: ' + a.ml_anomaly_score.toFixed(4) : ''}</div>
+          <div style="font-size:9px;color:var(--text-dim);margin-top:2px;font-style:italic;">ML Confidence (weak-label model on Fyers data) — not a confirmed manipulation probability</div>
         </div>
       </div>
 

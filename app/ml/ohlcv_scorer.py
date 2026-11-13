@@ -268,32 +268,43 @@ class OHLCVScorer:
 
     def score(self, fv: OHLCVFeatureVector):
         """
-        Score a feature vector. Returns (composite_score, method_label).
+        Score a feature vector. Returns (ml_confidence, method_label).
 
-        composite_score — float in [0, 1]
-        method_label    — 'heuristic' | 'heuristic+if'
+        ml_confidence — float in [0, 1]
+        method_label  — 'heuristic' | 'heuristic+if' | 'ml_classifier'
 
-        When model is trained: blend Isolation Forest score with heuristic 50/50.
-        When no model: return heuristic score only.
-
-        Neither mode returns a manipulation probability — this is anomaly scoring.
+        Pipeline:
+          1. Compute heuristic score from detector weights (always available)
+          2. If IF trained: compute Isolation Forest anomaly score
+          3. If ManipulationClassifier trained: compute calibrated confidence
+             using GradientBoostedClassifier on 9-feature vector
+             (7 OHLCV features + IF score + heuristic score)
+          4. Return highest-fidelity available score
         """
         heuristic = fv.heuristic_score()
 
         if not self.is_trained:
             return round(float(heuristic), 4), "heuristic"
 
-        # Isolation Forest score: score_samples returns more-negative for anomalies
+        # ── Step 2: Isolation Forest ───────────────────────────────────────
         X = np.array([fv.to_array()], dtype=np.float32)
         raw_sklearn = float(self._model.score_samples(X)[0])
-
-        # Normalise to [0, 1]: more negative = more anomalous = higher score
-        # Empirical range from sklearn IF: roughly [-0.6, 0.1]
         OFFSET = 0.0
         SCALE  = 0.5
         if_score = float(np.clip((-raw_sklearn - OFFSET) / SCALE, 0.0, 1.0))
 
-        # 50/50 blend — domain expert weighting + IF distributional anomalousness
+        # ── Step 3: ManipulationClassifier (if trained) ───────────────────
+        try:
+            from app.ml.manipulation_classifier import get_classifier, build_clf_features
+            clf = get_classifier()
+            if clf.trained:
+                clf_features = build_clf_features(fv, if_score, heuristic)
+                ml_confidence, method = clf.predict(clf_features)
+                return round(float(ml_confidence), 4), method
+        except Exception as clf_exc:
+            logger.debug("ManipulationClassifier skipped: %s", clf_exc)
+
+        # ── Step 4: Fallback — IF + heuristic blend ───────────────────────
         composite = float(np.clip((heuristic + if_score) / 2.0, 0.0, 1.0))
         return round(composite, 4), "heuristic+if"
 
