@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sentinel — National Market Surveillance & Integrity Terminal</title>
-<meta name="description" content="Institutional Market Surveillance Terminal: Real-time detection, cross-market synchronization, forensic order-book reconstruction, and SEBI regulatory reporting.">
+<title>Sentinel — Market Anomaly Surveillance Dashboard</title>
+<meta name="description" content="Sentinel: Heuristic anomaly detection for NSE/BSE market data. Flags unusual price, volume, and derivative patterns for analyst review. Not a regulatory system.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
@@ -814,7 +814,7 @@ button { cursor: pointer; }
       <div class="brand-badge">S</div>
       <div class="brand-info">
         <h1>Sentinel</h1>
-        <p>National Surveillance Terminal</p>
+        <p>Anomaly Detection Dashboard</p>
       </div>
     </div>
 
@@ -1857,9 +1857,10 @@ function filterAlertsQueue() {
 
   tbody.innerHTML = filtered.map(a => {
     let pfutp = 'Reg 4(2)(a)';
-    if (a.pattern_type.includes('circular')) pfutp = 'Reg 4(2)(b)';
-    else if (a.pattern_type.includes('pump')) pfutp = 'Reg 4(2)(r)';
-    else if (a.pattern_type.includes('pinning')) pfutp = 'Reg 3 & 4(1)';
+    if (a.pattern_type.includes('circular'))  pfutp = 'Reg 4(2)(a)';
+    else if (a.pattern_type.includes('pump')) pfutp = 'Reg 4(2)(a)/(e)';
+    else if (a.pattern_type.includes('pinning')) pfutp = 'Reg 4(2)(a)/(e)';
+    else if (a.pattern_type.includes('oi_') || a.pattern_type.includes('basis')) pfutp = 'Reg 4(2)(e)';
 
     // Phase 4: SAMPLE DATA badge for synthetic_demo rows
     const sampleBadge = a.is_sample_data
@@ -2180,10 +2181,12 @@ function switchDosTab(tabName) {
   const harmEst = (a.score || 0.8) * 350000;
 
   if (tabName === 'summary') {
-    let pfutp = 'Regulation 4(2)(a) — Inducing trading in securities by artificial volume creation';
-    if (a.pattern_type.includes('circular')) pfutp = 'Regulation 4(2)(b) — Pre-arranged synchronized transactions';
-    else if (a.pattern_type.includes('pump')) pfutp = 'Regulation 4(2)(r) — Disseminating misleading information & artificial price inflation';
-    else if (a.pattern_type.includes('pinning')) pfutp = 'Regulation 3 & 4(1) — Options expiry price pinning & gamma distortion';
+    let pfutp = 'Regulation 4(2)(a) — Creating artificial volume / false or misleading appearance of trading';
+    if (a.pattern_type.includes('circular'))  pfutp = 'Regulation 4(2)(a) — Creating artificial volume / false or misleading appearance of trading';
+    else if (a.pattern_type.includes('pump')) pfutp = 'Regulation 4(2)(a)/(e) — Creating artificial demand / price manipulation through coordinated buying';
+    else if (a.pattern_type.includes('pinning')) pfutp = 'Regulation 4(2)(a)/(e) — Manipulating spot price near option strike to minimise option payout';
+    else if (a.pattern_type.includes('oi_concentration') || a.pattern_type.includes('oi_iv')) pfutp = 'Regulation 4(2)(e) — Manipulating price through derivatives positioning';
+    else if (a.pattern_type.includes('basis')) pfutp = 'Regulation 4(2)(e) — Futures price manipulation affecting spot-futures relationship';
 
     body.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:12px;margin-bottom:18px;">
