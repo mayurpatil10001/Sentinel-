@@ -47,10 +47,29 @@ passed a None signal.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import pytz
+from sqlalchemy.exc import IntegrityError
+
 from app.db.models import Alert, Instrument
+
+_IST = pytz.timezone("Asia/Kolkata")
+
+
+def _derive_event_date(window_start: datetime):
+    """Return the IST trading date for a given UTC (or naive) window_start.
+
+    Rule: treat naive datetimes as UTC, convert to IST, return the .date().
+    This is the canonical event_date for all Alert rows.
+    """
+    if window_start.tzinfo is None:
+        # Assume UTC
+        dt_utc = window_start.replace(tzinfo=timezone.utc)
+    else:
+        dt_utc = window_start.astimezone(timezone.utc)
+    return dt_utc.astimezone(_IST).date()
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +211,7 @@ def create_or_update_alert(
             return existing, "deduplicated"
 
     # No existing open alert — create new
+    event_date = _derive_event_date(window_start)
     alert = Alert(
         instrument_id=instrument.id,
         pattern_type=pattern_type,
@@ -200,17 +220,43 @@ def create_or_update_alert(
         accounts_involved=accounts_involved,
         window_start=window_start,
         window_end=window_end,
-        explanation=explanation,
+        event_date=event_date,
+        explanation=f"[TIER {tier}] {explanation}",
         status="open",
         escalated_to_sebi=False,
     )
-    # Store escalation tier in explanation prefix for now
-    # (avoid schema migration for this build)
-    alert.explanation = f"[TIER {tier}] {explanation}"
     db.add(alert)
-    db.commit()
-    db.refresh(alert)
+    try:
+        db.commit()
+    except IntegrityError:
+        # Concurrent insert: another thread/process already created the same
+        # (instrument_id, pattern_type, event_date) row between our SELECT and
+        # INSERT.  Roll back and return the existing row — this is correct
+        # behaviour, not an error.
+        db.rollback()
+        existing = (
+            db.query(Alert)
+            .filter(
+                Alert.instrument_id == instrument.id,
+                Alert.pattern_type == pattern_type,
+                Alert.event_date == event_date,
+            )
+            .first()
+        )
+        if existing is not None:
+            existing.occurrences = (existing.occurrences or 1) + 1
+            existing.last_seen_at = datetime.utcnow()
+            db.commit()
+            db.refresh(existing)
+            logger.info(
+                "Alert %s deduplicated via IntegrityError catch for %s/%s",
+                existing.id, instrument.symbol, pattern_type,
+            )
+            return existing, "deduplicated"
+        # Extremely unlikely: row vanished between our rollback and re-query
+        raise
 
+    db.refresh(alert)
     logger.info(
         "Alert created: %s (tier=%d, score=%.3f, severity=%s) for %s/%s",
         alert.id, tier, score, severity, instrument.symbol, pattern_type

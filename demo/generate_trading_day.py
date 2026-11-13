@@ -198,11 +198,19 @@ def _save_alert(db, inst_id, pattern, sig, all_alerts, results):
     w_end   = getattr(sig, "window_end",   snap if snap else MARKET_CLOSE)
     sym = (getattr(sig, "instrument_symbol", None)
            or getattr(sig, "symbol", "?"))
+
+    # Derive event_date (IST date of w_start) so dedup constraint is satisfied.
+    import pytz as _pytz
+    _IST = _pytz.timezone("Asia/Kolkata")
+    event_date = w_start.astimezone(_IST).date() if w_start.tzinfo else TRADE_DATE
+
     alert = Alert(
         instrument_id=inst_id, pattern_type=pattern,
         severity=sig.severity, score=round(sig.score, 3),
         accounts_involved=accts,
         window_start=w_start, window_end=w_end,
+        event_date=event_date,
+        source="synthetic_demo",
         explanation=sig.explanation)
     try:
         db.add(alert); db.commit(); db.refresh(alert)

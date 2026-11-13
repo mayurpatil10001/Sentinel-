@@ -47,7 +47,7 @@ import os
 import tempfile
 import threading
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import List
 
 import pytest
@@ -133,17 +133,19 @@ def _insert_alert(SessionLocal, instrument_id: str, alert_id: str,
     Worker function: attempts to insert an Alert in its own session.
     Appends any exception to errors list (for the main thread to inspect).
 
-    window_offset_minutes: gives each thread a DISTINCT window_start so
-    this function exercises "N legitimately different alerts written
-    concurrently," rather than colliding with the UniqueConstraint on
-    (instrument_id, pattern_type, window_start). Ten threads writing the
-    SAME window_start are, by definition, duplicates — that scenario is
-    covered separately by TestDuplicateAlertRaceCondition below.
+    window_offset_minutes: gives each thread a DISTINCT window_start AND a
+    DISTINCT event_date offset (days), so each thread's alert has a unique
+    (instrument_id, pattern_type, event_date) tuple.  Ten threads writing the
+    SAME event_date are, by definition, duplicates — that scenario is covered
+    separately by TestDuplicateAlertRaceCondition below.
     """
     session = SessionLocal()
     try:
         base_start = datetime(2026, 9, 3, 10, 0, 0)
         window_start = base_start + timedelta(minutes=window_offset_minutes)
+        # Give each thread a distinct event_date so the UNIQUE constraint
+        # on (instrument_id, pattern_type, event_date) does not collide.
+        event_date = date(2026, 9, 3) + timedelta(days=window_offset_minutes)
         alert = Alert(
             id=alert_id,
             instrument_id=instrument_id,
@@ -153,6 +155,7 @@ def _insert_alert(SessionLocal, instrument_id: str, alert_id: str,
             accounts_involved=["ACC001"],
             window_start=window_start,
             window_end=window_start + timedelta(minutes=15),
+            event_date=event_date,
             explanation="Concurrent test alert.",
             status="open",
             escalated_to_sebi=False,
@@ -320,17 +323,21 @@ class TestDuplicateAlertRaceCondition:
 
     def test_concurrent_same_window_detection_produces_one_alert(self, concurrent_db):
         """
-        Simulate 5 concurrent detection runs writing an alert for the same window.
-        Result must be exactly 1 alert (idempotent).
+        Simulate 5 concurrent detection runs writing an alert for the same
+        (instrument, pattern_type, event_date).  Result must be exactly 1 alert.
 
-        UniqueConstraint("instrument_id", "pattern_type", "window_start") on
-        Alert ensures the second+ concurrent INSERTs raise IntegrityError,
-        which detection_run() catches and treats as "already exists."
+        UniqueConstraint("instrument_id", "pattern_type", "event_date") on Alert
+        ensures the second+ concurrent INSERTs raise IntegrityError, which
+        detection_run() catches and treats as "already exists."
+
+        event_date must be NOT NULL — NULLs never collide in SQL UNIQUE indexes
+        (E6), so the constraint would be bypassed if event_date were nullable.
         """
         SessionLocal, engine = concurrent_db
         instrument_id = _make_instrument_row(SessionLocal)
 
         window_start = datetime(2026, 9, 3, 10, 0, 0)
+        event_date   = date(2026, 9, 3)   # explicit, NOT NULL
         errors: List[Exception] = []
 
         def detection_run():
@@ -340,17 +347,15 @@ class TestDuplicateAlertRaceCondition:
             """
             session = SessionLocal()
             try:
-                # Check existence (read) — use first() not one_or_none() so
-                # that if a race already created a duplicate, this thread sees
-                # the existing row and skips rather than raising MultipleResultsFound.
+                # Check existence keyed on event_date (the dedup key).
                 existing = session.query(Alert).filter_by(
                     instrument_id=instrument_id,
                     pattern_type="spoofing_layering",
-                    window_start=window_start,
+                    event_date=event_date,
                 ).first()
 
                 if existing is None:
-                    # Insert (write) — the gap between check and write is the race
+                    # Insert — the gap between check and write is the race window
                     alert = Alert(
                         id=str(uuid.uuid4()),  # Different IDs so PK doesn't block
                         instrument_id=instrument_id,
@@ -360,6 +365,7 @@ class TestDuplicateAlertRaceCondition:
                         accounts_involved=["ACC001"],
                         window_start=window_start,
                         window_end=datetime(2026, 9, 3, 10, 15, 0),
+                        event_date=event_date,
                         explanation="Concurrent detection test.",
                         status="open",
                         escalated_to_sebi=False,
@@ -388,16 +394,15 @@ class TestDuplicateAlertRaceCondition:
         count = session.query(Alert).filter_by(
             instrument_id=instrument_id,
             pattern_type="spoofing_layering",
-            window_start=window_start,
+            event_date=event_date,
         ).count()
         session.close()
 
-        # UniqueConstraint("instrument_id", "pattern_type", "window_start") is
-        # enforced on the Alert model. This is a hard assertion, not advisory
-        # xfail: if this ever fails again, someone removed or weakened the
-        # constraint — a real regression, not a tolerated race.
+        # Hard assertion — not xfail. UniqueConstraint on (instrument_id,
+        # pattern_type, event_date) prevents duplicates.  event_date is NOT NULL
+        # so NULL-bypass (E6) is impossible.
         assert count == 1, (
             f"Expected exactly 1 alert (UniqueConstraint should prevent "
-            f"duplicates), got {count}. The UniqueConstraint on Alert may "
-            f"have been removed or is not being enforced by this DB engine."
+            f"duplicates), got {count}. Either the constraint was removed, "
+            f"or event_date was set to NULL (bypassing SQL UNIQUE semantics)."
         )

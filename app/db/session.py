@@ -34,7 +34,17 @@ def _safe_migrate_columns():
         if "alerts" in existing_tables:
             alert_cols = {col["name"] for col in inspector.get_columns("alerts")}
             if "event_date" not in alert_cols:
-                conn.execute(text("ALTER TABLE alerts ADD COLUMN event_date DATE"))
+                # Add column; SQLite cannot add NOT NULL without a default.
+                # server_default="2000-01-01" handles new DB creation; existing
+                # DBs get the column with NULL then we backfill below.
+                conn.execute(text("ALTER TABLE alerts ADD COLUMN event_date DATE DEFAULT '2000-01-01'"))
+            # Backfill any NULLs: derive event_date from window_start (UTC date).
+            # This is correct for IST-era data; the small UTC/IST difference
+            # (5h30m) only matters for alerts generated near midnight IST.
+            conn.execute(text(
+                "UPDATE alerts SET event_date = date(window_start) "
+                "WHERE event_date IS NULL"
+            ))
             if "last_seen_at" not in alert_cols:
                 conn.execute(text("ALTER TABLE alerts ADD COLUMN last_seen_at DATETIME"))
             if "occurrences" not in alert_cols:

@@ -42,20 +42,21 @@ def run_detection(req: DetectionRunRequest, db: Session = Depends(get_db)):
 
     created = []
     for sig in signals:
-        alert = Alert(
-            instrument_id=instrument.id,
+        # Route through create_or_update_alert so dedup, event_date derivation,
+        # escalation tier, and IntegrityError handling are all applied.
+        alert, action = create_or_update_alert(
+            db=db,
+            instrument=instrument,
             pattern_type="spoofing_layering",
+            score=sig.score,
             severity=sig.severity,
-            score=round(sig.score, 3),
             accounts_involved=[sig.account_id],
             window_start=sig.window_start,
             window_end=sig.window_end,
             explanation=sig.explanation,
         )
-        db.add(alert)
-        db.commit()
-        db.refresh(alert)
-        created.append(alert)
+        if alert is not None:
+            created.append(alert)
 
     return [
         AlertOut(

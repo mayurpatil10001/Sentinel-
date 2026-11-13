@@ -1,0 +1,18 @@
+# ── Broker SDK dependencies ────────────────────────────────────────────────────
+# Install AFTER requirements.txt:
+#   pip install -r requirements.txt
+#   pip install -r requirements-brokers.txt
+#
+# Why separate?
+#   fyers-apiv3==3.2.1 requires requests==2.31.0 exactly.
+#   kiteconnect==5.0.1 requires requests>=2.18.4 (compatible).
+#   pip cannot satisfy requests==2.31.0 AND requests==2.32.3 simultaneously,
+#   so broker SDKs live here and are excluded from clean-CI installs.
+#
+# CI / testing without a broker token:
+#   Tests that require a live broker token or network access are decorated
+#   with @pytest.mark.skipif(not BROKER_SDK_AVAILABLE, ...) and skip cleanly.
+
+fyers-apiv3>=3.2.1        # Fyers broker API v3 (live quotes, depth, option chain)
+kiteconnect==5.0.1        # Zerodha Kite Connect SDK (broker order stream)
+

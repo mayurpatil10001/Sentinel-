@@ -21,7 +21,7 @@ WHY THIS MATTERS:
 
 import uuid
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -85,6 +85,7 @@ def _make_alert_dict(instrument_id: str) -> dict:
         accounts_involved=["ACC001", "ACC002"],
         window_start=datetime(2026, 9, 3, 10, 0, 0),
         window_end=datetime(2026, 9, 3, 10, 15, 0),
+        event_date=date(2026, 9, 3),   # NOT NULL — required after E6 fix
         explanation="Test alert for DB failure test.",
         status="open",
         escalated_to_sebi=False,

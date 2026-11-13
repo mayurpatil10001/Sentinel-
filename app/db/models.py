@@ -219,10 +219,11 @@ class Alert(Base):
     window_start = Column(DateTime, nullable=False)   # 09:15 IST of event_date (kept for compat)
     window_end = Column(DateTime, nullable=False)     # 15:30 IST of event_date
 
-    # Phase 1: proper dedup key — the trading date this anomaly refers to.
-    # Stored as a Date (no time, no tz) with IST semantics.
-    # Migration: existing rows get event_date = window_start.date().
-    event_date = Column(Date, nullable=True, index=True)
+    # Dedup key: the trading date this anomaly refers to (IST, Date only).
+    # NOT NULL — every alert must have a date.  The ingest layer derives this
+    # from window_start converted to IST; demo generators use the trade date.
+    # Migration: existing rows with NULL are back-filled by init_db() below.
+    event_date = Column(Date, nullable=False, index=True, server_default="2000-01-01")
 
     # Phase 1: re-detection tracking — updated on every scan that fires for
     # the same (instrument, pattern, event_date) rather than inserting a new row.

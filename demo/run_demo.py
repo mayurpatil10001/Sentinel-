@@ -50,19 +50,20 @@ def main():
     print(f"\n{len(signals)} spoofing/layering signal(s) detected:\n")
 
     for sig in signals:
-        alert = Alert(
-            instrument_id=instrument.id,
+        from app.alerts.manager import create_or_update_alert
+        alert, action = create_or_update_alert(
+            db=db,
+            instrument=instrument,
             pattern_type="spoofing_layering",
+            score=sig.score,
             severity=sig.severity,
-            score=round(sig.score, 3),
             accounts_involved=[sig.account_id],
             window_start=sig.window_start,
             window_end=sig.window_end,
             explanation=sig.explanation,
         )
-        db.add(alert)
-        db.commit()
-        db.refresh(alert)
+        if alert is None:
+            continue
 
         print("-" * 70)
         print(f"ALERT {alert.id}")

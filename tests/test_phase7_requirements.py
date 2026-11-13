@@ -100,31 +100,47 @@ class TestPackageImports:
 # ---------------------------------------------------------------------------
 
 class TestRequirementsTxt:
-    """Verify requirements.txt mentions critical packages."""
+    """Verify requirements.txt + requirements-brokers.txt cover critical packages.
+
+    Broker SDKs (fyers-apiv3, kiteconnect) live in requirements-brokers.txt
+    because fyers-apiv3==3.2.1 pins requests==2.31.0 exactly, which conflicts
+    with any other exact requests pin.  Install order:
+        pip install -r requirements.txt
+        pip install -r requirements-brokers.txt
+    """
 
     @pytest.fixture(scope="class")
     def req_text(self):
+        root = Path(__file__).parent.parent
+        core = (root / "requirements.txt").read_text(encoding="utf-8").lower()
+        brokers = (root / "requirements-brokers.txt").read_text(encoding="utf-8").lower()
+        return core + "\n" + brokers
+
+    @pytest.fixture(scope="class")
+    def core_req_text(self):
         path = Path(__file__).parent.parent / "requirements.txt"
         assert path.exists(), "requirements.txt not found at repo root"
         return path.read_text(encoding="utf-8").lower()
 
-    def test_apscheduler_in_requirements(self, req_text):
-        assert "apscheduler" in req_text, "APScheduler missing from requirements.txt"
+    def test_apscheduler_in_requirements(self, core_req_text):
+        assert "apscheduler" in core_req_text, "APScheduler missing from requirements.txt"
 
-    def test_python_dotenv_in_requirements(self, req_text):
-        assert "python-dotenv" in req_text, "python-dotenv missing from requirements.txt"
+    def test_python_dotenv_in_requirements(self, core_req_text):
+        assert "python-dotenv" in core_req_text, "python-dotenv missing from requirements.txt"
 
     def test_fyers_apiv3_in_requirements(self, req_text):
-        assert "fyers-apiv3" in req_text, "fyers-apiv3 missing from requirements.txt"
+        # fyers-apiv3 lives in requirements-brokers.txt (see class docstring)
+        assert "fyers-apiv3" in req_text, \
+            "fyers-apiv3 missing from requirements.txt or requirements-brokers.txt"
 
-    def test_pytest_in_requirements(self, req_text):
-        assert "pytest" in req_text, "pytest missing from requirements.txt"
+    def test_pytest_in_requirements(self, core_req_text):
+        assert "pytest" in core_req_text, "pytest missing from requirements.txt"
 
-    def test_fastapi_in_requirements(self, req_text):
-        assert "fastapi" in req_text, "fastapi missing from requirements.txt"
+    def test_fastapi_in_requirements(self, core_req_text):
+        assert "fastapi" in core_req_text, "fastapi missing from requirements.txt"
 
-    def test_sqlalchemy_in_requirements(self, req_text):
-        assert "sqlalchemy" in req_text, "sqlalchemy missing from requirements.txt"
+    def test_sqlalchemy_in_requirements(self, core_req_text):
+        assert "sqlalchemy" in core_req_text, "sqlalchemy missing from requirements.txt"
 
 
 # ---------------------------------------------------------------------------
