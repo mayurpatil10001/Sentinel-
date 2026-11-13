@@ -436,11 +436,10 @@ def run_derivative_detectors(
         except Exception as e:
             logger.error("[phase3] Unhandled error for %s: %s", sym, e, exc_info=True)
 
-    # ── ML Confidence scoring — applied to ALL derivative detections ────────
-    # Uses the same OHLCVScorer (Isolation Forest trained on live Fyers data).
-    # For derivative detections the feature vector is built from the detection
-    # scores themselves (basis_ratio, OI concentration ratio, etc.) mapped onto
-    # the same 7-feature space so the model can compare across all detection types.
+    # ── Anomaly scoring — applied to ALL derivative detections ───────────────
+    # Uses OHLCVScorer (Isolation Forest). score_method='heuristic' until the
+    # IF is retrained on raw OHLCV features (E10 — current IF inputs are
+    # detector outputs, so it cannot flag sessions the rules missed).
     if all_detections:
         try:
             from app.ml.ohlcv_scorer import build_feature_vector, get_scorer
@@ -458,7 +457,7 @@ def run_derivative_detectors(
                 for det in dets_for_sym:
                     det["ml_anomaly_score"] = ml_score
                     det["score_method"] = method
-                    logger.debug("[phase3-ml] %s ml_confidence=%.4f method=%s", sym_key, ml_score, method)
+                    logger.debug("[phase3-ml] %s anomaly_score=%.4f method=%s", sym_key, ml_score, method)
         except Exception as ml_exc:
             logger.debug("ML scoring skipped for derivative detections: %s", ml_exc)
 

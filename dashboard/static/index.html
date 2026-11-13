@@ -1272,7 +1272,7 @@ button { cursor: pointer; }
                   <th>Manipulation Pattern</th>
                   <th>PFUTP Category</th>
                   <th>Severity</th>
-                  <th title="ML Confidence: how similar this session is to previously flagged manipulation patterns, scored by Isolation Forest + GradientBoosted Classifier on live Fyers data. Weak-label model — not a confirmed manipulation probability.">ML Confidence</th>
+                  <th title="Anomaly Score: Isolation Forest percentile among this symbol's own session history, computed on raw OHLCV features (volume ratio, return z-score, range, gap). Higher = more unusual. This is NOT a manipulation probability.">Anomaly Score</th>
                   <th>Accounts</th>
                   <th>Lifecycle Status</th>
                   <th>Window</th>
@@ -1878,7 +1878,7 @@ function filterAlertsQueue() {
         <td><strong style="color:#fff;">${esc(a.pattern_type.replace(/_/g, ' '))}</strong>${occBadge}</td>
         <td><span class="tag tag-medium">${pfutp}</span></td>
         <td>${sevPill(a.severity)}</td>
-        <td>${(() => { const hS = (a.score ?? 0).toFixed(3); const sc = a.score > 0.8 ? 'var(--crimson)' : 'var(--amber)'; const ml = a.ml_anomaly_score != null   ? `<span class='tag tag-low' style='font-size:9px;margin-left:4px;'      title='ML Confidence (Isolation Forest + GBC on live Fyers data)'> IF:${a.ml_anomaly_score.toFixed(3)}</span>`   : `<span style='font-size:9px;color:var(--text-dim);margin-left:4px;'>training...</span>`; return `<span style='font-family:var(--font-mono);font-size:11.5px;color:${sc};'   title='Heuristic statistical score'>${hS}</span>${ml}`; })()} </td>
+        <td>${(() => { const hS = (a.score ?? 0).toFixed(3); const sc = a.score > 0.8 ? 'var(--crimson)' : 'var(--amber)'; const anomaly = a.ml_anomaly_score != null   ? `<span class='tag tag-low' style='font-size:9px;margin-left:4px;'      title='Anomaly Score (Isolation Forest on raw OHLCV features — not a manipulation probability)'>IF:${a.ml_anomaly_score.toFixed(3)}</span>`   : (a.score_method === 'heuristic' || !a.score_method) ? `<span style='font-size:9px;color:var(--text-dim);margin-left:4px;' title='No anomaly model trained yet'>—</span>` : `<span style='font-size:9px;color:var(--text-dim);margin-left:4px;'>training…</span>`; return `<span style='font-family:var(--font-mono);font-size:11.5px;color:${sc};'   title='Rule score (heuristic statistical detector)'>${hS}</span>${anomaly}`; })()} </td>
         <td>${a.accounts_involved ?? '—'}</td>
         <td>${statusPill(a.status)}</td>
         <td>${eventDate ? timeAgo(eventDate) : '—'}</td>
@@ -2195,15 +2195,17 @@ function switchDosTab(tabName) {
           </div>
         </div>
         <div class="card card-pad">
-          <div style="font-size:10px;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;" title="ML Confidence: GradientBoosted Classifier trained on live Fyers data using flagged sessions as weak positive labels. Not a confirmed manipulation probability.">ML Confidence</div>
-          <div style="font-family:var(--font-mono);font-size:20px;font-weight:800;color:#fff;">${(a.score ?? 0).toFixed(4)}</div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${a.score_method === 'ml_classifier' ? 'GBC Classifier (live Fyers)' : a.score_method === 'heuristic+if' ? 'IF + heuristic blend' : 'heuristic only'}${a.ml_anomaly_score != null ? ' · IF: ' + a.ml_anomaly_score.toFixed(4) : ''}</div>
-          <div style="font-size:9px;color:var(--text-dim);margin-top:2px;font-style:italic;">ML Confidence (weak-label model on Fyers data) — not a confirmed manipulation probability</div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;" title="Anomaly Score: Isolation Forest percentile on raw OHLCV features (volume ratio, return z-score, high-low range/ATR, gap, close location). Trained on ALL sessions — not just flagged ones. Higher = more unusual relative to this symbol's own history. NOT a manipulation probability.">Anomaly Score</div>
+          <div style="font-family:var(--font-mono);font-size:20px;font-weight:800;color:#fff;">${a.ml_anomaly_score != null ? a.ml_anomaly_score.toFixed(4) : '—'}</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${a.score_method === 'heuristic+if' ? 'Isolation Forest (raw OHLCV)' : a.score_method === 'heuristic' || !a.score_method ? 'Heuristic only — no IF score' : a.score_method}</div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--text-dim);margin-top:8px;margin-bottom:4px;">Rule Score</div>
+          <div style="font-family:var(--font-mono);font-size:16px;font-weight:600;color:#fbbf24;">${(a.score ?? 0).toFixed(4)}</div>
+          <div style="font-size:9px;color:var(--text-dim);margin-top:2px;font-style:italic;">Statistical heuristic — not a confirmed manipulation probability</div>
         </div>
       </div>
 
       <div class="card card-pad" style="margin-bottom:18px;">
-        <div class="card-head-title" style="margin-bottom:6px;">Alleged PFUTP Regulatory Violation</div>
+        <div class="card-head-title" style="margin-bottom:6px;">PFUTP Regulatory Reference</div>
         <div style="background:rgba(245, 158, 11, 0.08);border:1px solid rgba(245, 158, 11, 0.25);border-radius:6px;padding:10px 14px;color:#fcd34d;font-size:12px;line-height:1.5;">
           <strong>SEBI PFUTP Regulations, 2003:</strong> ${pfutp}
         </div>

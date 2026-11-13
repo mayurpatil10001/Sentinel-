@@ -268,45 +268,42 @@ class OHLCVScorer:
 
     def score(self, fv: OHLCVFeatureVector):
         """
-        Score a feature vector. Returns (ml_confidence, method_label).
+        Score a feature vector. Returns (anomaly_score, method_label).
 
-        ml_confidence — float in [0, 1]
-        method_label  — 'heuristic' | 'heuristic+if' | 'ml_classifier'
+        anomaly_score — float in [0, 1]
+          heuristic mode: weighted average of detector scores
+          heuristic+if:   Isolation Forest percentile, computed on raw OHLCV
+                          features (NOT on detector outputs — see note below)
+        method_label  — 'heuristic' | 'heuristic+if'
 
-        Pipeline:
-          1. Compute heuristic score from detector weights (always available)
-          2. If IF trained: compute Isolation Forest anomaly score
-          3. If ManipulationClassifier trained: compute calibrated confidence
-             using GradientBoostedClassifier on 9-feature vector
-             (7 OHLCV features + IF score + heuristic score)
-          4. Return highest-fidelity available score
+        NOTE (E10): The current feature vector (OHLCVFeatureVector) contains
+        only detector output scores. An IF trained on these features cannot
+        flag sessions the rules missed. The ManipulationClassifier (E11) has
+        been removed from this path because its positives were detector-flagged
+        sessions and its inputs included the heuristic score — label leakage.
+        Until the IF is retrained on raw OHLCV features (volume ratio,
+        return z-score, range/ATR, gap, close location), it falls back to
+        heuristic mode and score_method='heuristic'.
         """
         heuristic = fv.heuristic_score()
 
         if not self.is_trained:
             return round(float(heuristic), 4), "heuristic"
 
-        # ── Step 2: Isolation Forest ───────────────────────────────────────
+        # ── Isolation Forest ──────────────────────────────────────────────────
         X = np.array([fv.to_array()], dtype=np.float32)
         raw_sklearn = float(self._model.score_samples(X)[0])
         OFFSET = 0.0
         SCALE  = 0.5
         if_score = float(np.clip((-raw_sklearn - OFFSET) / SCALE, 0.0, 1.0))
 
-        # ── Step 3: ManipulationClassifier (if trained) ───────────────────
-        try:
-            from app.ml.manipulation_classifier import get_classifier, build_clf_features
-            clf = get_classifier()
-            if clf.trained:
-                clf_features = build_clf_features(fv, if_score, heuristic)
-                ml_confidence, method = clf.predict(clf_features)
-                return round(float(ml_confidence), 4), method
-        except Exception as clf_exc:
-            logger.debug("ManipulationClassifier skipped: %s", clf_exc)
+        # NOTE: ManipulationClassifier removed from product path (E11).
+        # It used heuristic_score as an input feature → label leakage.
+        # It was not trained on confirmed manipulation ground truth and its
+        # "calibrated probability" was meaningless.
 
-        # ── Step 4: Fallback — IF + heuristic blend ───────────────────────
-        composite = float(np.clip((heuristic + if_score) / 2.0, 0.0, 1.0))
-        return round(composite, 4), "heuristic+if"
+        anomaly_score = float(np.clip(if_score, 0.0, 1.0))
+        return round(anomaly_score, 4), "heuristic+if"
 
     def save(self, model_dir: Optional[Path] = None) -> None:
         """Save trained model and metadata to `model_dir`."""
