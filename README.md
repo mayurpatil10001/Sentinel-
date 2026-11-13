@@ -1,4 +1,4 @@
-# 🛡️ Sentinel — Market Surveillance & Manipulation Detection Platform
+# NIRIKSHAK: AIML-Powered Financial Market Surveillance and Manipulation Detection System
 
 <div align="center">
 
@@ -9,7 +9,7 @@
 [![SEBI PFUTP](https://img.shields.io/badge/SEBI-PFUTP%202003-orange.svg)]()
 [![Status](https://img.shields.io/badge/status-proof--of--concept-yellow.svg)]()
 
-**An order-level, evidence-first market surveillance engine for Indian capital markets.**  
+**An AIML-powered financial market surveillance and manipulation detection system for Indian capital markets.**  
 Detects manipulation before it reaches retail investors. Backed by real SEBI case research and academic event-study methodology.
 
 </div>

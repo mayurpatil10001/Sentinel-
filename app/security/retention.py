@@ -227,7 +227,7 @@ def purge_cli_main():
     from app.db.session import get_db
 
     parser = argparse.ArgumentParser(
-        description="Sentinel data retention purge — removes expired order/trade data."
+        description="NIRIKSHAK data retention purge — removes expired order/trade data."
     )
     parser.add_argument(
         "--retention-days", type=int,
@@ -241,7 +241,7 @@ def purge_cli_main():
     )
     args = parser.parse_args()
 
-    print(f"Sentinel Retention Purge")
+    print(f"NIRIKSHAK Retention Purge")
     print(f"  retention_days : {args.retention_days}")
     print(f"  dry_run        : {args.dry_run}")
     print()

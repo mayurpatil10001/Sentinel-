@@ -105,7 +105,7 @@ class SEBIDraftSAR:
     generated_at: str              # ISO8601
 
     # Section 1: Header
-    reporting_entity: str = "Sentinel Automated Surveillance System"
+    reporting_entity: str = "NIRIKSHAK Automated Surveillance System"
     report_date: str = ""
     analyst_name: str = "[ANALYST TO COMPLETE]"
 
@@ -183,7 +183,7 @@ def generate_draft_sar(
     accounts = alert.accounts_involved or []
 
     methodology = (
-        "Sentinel automated surveillance system detected this pattern using "
+        "NIRIKSHAK automated surveillance system detected this pattern using "
         "rule-based signal detectors (Phases 1–3) combined with an unsupervised "
         "Isolation Forest anomaly scorer (Phase 4). "
         "Detection thresholds are documented inline and labelled as "
@@ -305,7 +305,7 @@ def format_sar_as_text(sar: SEBIDraftSAR) -> str:
     """
     lines = [
         "=" * 70,
-        "SENTINEL — DRAFT SUSPICIOUS ACTIVITY REPORT",
+        "NIRIKSHAK — DRAFT SUSPICIOUS ACTIVITY REPORT",
         "FOR ANALYST REVIEW ONLY — NOT YET FILED WITH SEBI",
         "=" * 70,
         "",

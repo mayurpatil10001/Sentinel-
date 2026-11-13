@@ -1,4 +1,5 @@
-# Sentinel — Project Status
+# NIRIKSHAK: AIML-Powered Financial Market Surveillance and Manipulation Detection System
+## Project Status
 
 > **Generated:** 2026-11-13 23:19 IST  
 > **Method:** Numbers generated from real `pytest` runs. No value typed by hand.  

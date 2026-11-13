@@ -113,7 +113,7 @@ def _migrate_alert_event_dates():
 
 
 app = FastAPI(
-    title="Sentinel — Market Surveillance Platform",
+    title="NIRIKSHAK — AIML-Powered Financial Market Surveillance and Manipulation Detection System",
     description=(
         "Order-level surveillance for Indian markets (equities, penny stocks, "
         "indices, futures, options) with evidence-first alerting for SEBI/exchange "
