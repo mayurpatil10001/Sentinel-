@@ -79,3 +79,6 @@ Sentinel-premium-frontend/
 upgrade_dashboard_ui.py
 dashboard/scripts/inject_fyers_modal.py
 dashboard/scripts/safe_patch_fyers.py
+
+backtest/results/*.json
+backtest/results/*.csv
