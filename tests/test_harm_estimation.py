@@ -70,6 +70,21 @@ from app.harm_estimation.trade_harm import (
 
 logger = logging.getLogger(__name__)
 
+
+# ── Isolate the guard audit log for ALL tests in this module ──────────────────
+# Without this, every call to check_instrument_allowed() appends to the
+# TRACKED file app/harm_estimation/guard_audit.log, dirtying `git status`.
+# This autouse fixture redirects the path to tmp_path for every test.
+
+@pytest.fixture(autouse=True)
+def _redirect_audit_log(tmp_path, monkeypatch):
+    """Redirect the guard audit log to a temp dir so tests never write to
+    tracked files (guards against E7 from the Phase-0 security audit)."""
+    import app.harm_estimation.guards as guards_module
+    monkeypatch.setattr(
+        guards_module, "_GUARD_AUDIT_LOG_PATH", tmp_path / "guard_audit.log"
+    )
+
 # ── Synthetic data factory ────────────────────────────────────────────────────
 
 RNG = np.random.default_rng(seed=42)  # fixed seed for reproducibility

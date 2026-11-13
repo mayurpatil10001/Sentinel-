@@ -56,8 +56,20 @@ def _require_env(name: str) -> str:
     return val
 
 
-# Token stored locally (never committed — in .gitignore)
-_TOKEN_FILE = Path(__file__).parent.parent.parent / ".fyers_token.json"
+# Token file location
+# ---------------------------------------------------------------------------
+# The token is stored as plain JSON (NOT encrypted).
+# Default location: ~/.sentinel/fyers_token.json  (outside the repo).
+# Override with the SENTINEL_TOKEN_PATH environment variable.
+#
+# The file is gitignored under every name it can have (.fyers_token.json,
+# data/fyers_token.json, **/fyers_token.json). Do not place it inside
+# the repository. The file is chmod 0600 on POSIX systems; on Windows a
+# best-effort icacls restriction is applied.
+_DEFAULT_TOKEN_FILE = Path.home() / ".sentinel" / "fyers_token.json"
+_TOKEN_FILE = Path(
+    os.environ.get("SENTINEL_TOKEN_PATH", str(_DEFAULT_TOKEN_FILE))
+)
 
 
 class FyersAuthError(Exception):
@@ -128,8 +140,26 @@ class FyersAuthManager:
             # Store app_id so we can detect token/app_id mismatch on load
             "app_id": self._app_id,
         }
+        self._token_file.parent.mkdir(parents=True, exist_ok=True)
         self._token_file.write_text(json.dumps(payload, indent=2))
-        logger.debug("Token saved to %s", self._token_file)
+        # Restrict file permissions: owner read/write only.
+        # On POSIX this sets mode 0600. On Windows we attempt icacls; failure
+        # is logged but not fatal (Windows ACLs are managed differently).
+        try:
+            import stat
+            self._token_file.chmod(stat.S_IRUSR | stat.S_IWUSR)
+        except (AttributeError, NotImplementedError):
+            # Windows: attempt icacls as best-effort
+            try:
+                import subprocess, getpass
+                subprocess.run(
+                    ["icacls", str(self._token_file), "/inheritance:r",
+                     "/grant:r", f"{getpass.getuser()}:(R,W)"],
+                    capture_output=True, check=False
+                )
+            except Exception:
+                pass
+        logger.debug("Token saved (plain JSON, NOT encrypted) to %s", self._token_file)
 
     def _load_token(self) -> dict | None:
         if not self._token_file.exists():

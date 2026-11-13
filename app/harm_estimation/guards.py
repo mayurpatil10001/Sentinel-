@@ -39,8 +39,16 @@ logger = logging.getLogger(__name__)
 # Every call — including refused ones — is logged to a file, not just to
 # stderr. This gives a paper trail: if the guard is ever bypassed, there is a
 # record.
+#
+# IMPORTANT: the log file is written to the runtime/ directory at the repo
+# root (gitignored). It is NOT written inside app/harm_estimation/ to prevent
+# test runs from dirtying tracked files.
+# Override with the SENTINEL_AUDIT_LOG env var if you need a different path.
 
-_GUARD_AUDIT_LOG_PATH = Path("app/harm_estimation/guard_audit.log")
+_DEFAULT_AUDIT_LOG = Path("runtime/guard_audit.log")
+_GUARD_AUDIT_LOG_PATH = Path(
+    os.environ.get("SENTINEL_AUDIT_LOG", str(_DEFAULT_AUDIT_LOG))
+)
 
 
 def _audit(event: str, instrument_id: str, case_id: str, bypassed: bool) -> None:

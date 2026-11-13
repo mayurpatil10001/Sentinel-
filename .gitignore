@@ -35,8 +35,21 @@ htmlcov/
 *.db-shm
 
 # Fyers credentials and tokens (NEVER commit these)
+# The token is stored as plain JSON (not encrypted).
+# Keep the file at SENTINEL_TOKEN_PATH (default: ~/.sentinel/fyers_token.json)
+# or at the repo-root .fyers_token.json — NEITHER path should ever be committed.
 .env
 .fyers_token.json
+data/fyers_token.json
+**/fyers_token.json
+*.token.json
+
+# Runtime artefacts written during normal operation or tests
+# (audit log, calibration output, backtest logs)
+# These grow continuously and must not be committed.
+runtime/
+app/harm_estimation/guard_audit.log
+backtest/results/phase8_calibration.log
 
 # Logs
 logs/
