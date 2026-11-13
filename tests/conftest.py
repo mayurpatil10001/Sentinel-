@@ -25,6 +25,13 @@ _GIT_STATUS_AT_SESSION_START: set[str] = set()
 def pytest_sessionstart(session):
     """Called once at the very beginning of the test session."""
     global _GIT_STATUS_AT_SESSION_START
+    # Refresh the git index stat-cache BEFORE snapshotting so that files whose
+    # on-disk mtime changed (e.g. due to Python writing __pycache__ for this
+    # very file) are not falsely reported as "modified" by later git-status calls.
+    subprocess.run(
+        ["git", "update-index", "--refresh", "-q"],
+        capture_output=True, check=False,
+    )
     _GIT_STATUS_AT_SESSION_START = _git_porcelain_set()
 
 
@@ -32,3 +39,4 @@ def pytest_sessionstart(session):
 def git_status_baseline() -> set[str]:
     """Provide the git-porcelain snapshot taken before any test ran."""
     return _GIT_STATUS_AT_SESSION_START
+
