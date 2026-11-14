@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Tests](https://img.shields.io/badge/tests-200%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-496%20passing-brightgreen.svg)]()
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)]()
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-teal.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
@@ -71,15 +71,15 @@ Phase 3 — Distribution (fully visible, too late)
 
 ### Why Order-Level Surveillance Changes This
 
-The defining insight behind Sentinel is that **spoofing, layering, and coordinated buying are visible in the order book before they are visible in prices**. A spoofer who places ₹2 crore in sell orders and cancels them the moment anyone tries to fill them creates a measurable pattern in order lifecycle data — placed → cancelled within seconds — before any price impact occurs.
+The defining insight behind NIRIKSHAK is that **spoofing, layering, and coordinated buying are visible in the order book before they are visible in prices**. A spoofer who places ₹2 crore in sell orders and cancels them the moment anyone tries to fill them creates a measurable pattern in order lifecycle data — placed → cancelled within seconds — before any price impact occurs.
 
-Sentinel is built to read that order book signal at Phase 1, not Phase 3.
+NIRIKSHAK is built to read that order book signal at Phase 1, not Phase 3.
 
 | Surveillance Type | Detects At | Data Required | Retail Harm Prevented? |
 |---|---|---|---|
 | Traditional price chart review | Phase 2–3 | OHLCV | ❌ Usually not |
 | Exchange tick data analysis | Phase 1–2 | Tick data | Partially |
-| **Sentinel — Order lifecycle** | **Phase 1** | **Order book** | **✅ Yes, at source** |
+| **NIRIKSHAK — Order lifecycle** | **Phase 1** | **Order book** | **✅ Yes, at source** |
 
 ---
 
@@ -93,45 +93,45 @@ India's retail investor base has grown from approximately **1.4 crore** register
 - The Mauria Udyog case alone involved **222 entities**, **Rs. 143.79 crore** in confirmed disgorgement, and a multi-year operation specifically designed to exploit retail investors through SMS campaigns
 - Small-cap and penny-stock manipulation disproportionately harms retail investors who lack access to institutional-grade research
 
-### 2.2 The Specific Impact Sentinel Is Designed to Have
+### 2.2 The Specific Impact NIRIKSHAK Is Designed to Have
 
 #### A — Closing the Detection Latency Gap
 
 SEBI currently identifies most manipulation cases through **post-hoc investigation** — a complaint is filed, or a statistical anomaly is noticed, and an investigation begins. The time between manipulation and enforcement order is typically **1–6 years** (Kavit Industries: manipulation in 2019, order in 2025; Mauria Udyog: manipulation in 2017–2020, interim order in 2023). During this window, the manipulators operate freely.
 
-Sentinel is designed to reduce this latency from years to **hours** by continuously monitoring order flow for the structural signatures of manipulation, not just price outcomes.
+NIRIKSHAK is designed to reduce this latency from years to **hours** by continuously monitoring order flow for the structural signatures of manipulation, not just price outcomes.
 
 #### B — Making "Designed to Stay Below Threshold" Harder
 
 A documented strategy in the Mauria Udyog case was that the coordinated buying was **deliberately kept below the bulk deal disclosure threshold** (< 0.5% of issued capital per transaction) so no publicly visible disclosure was triggered. Existing surveillance misses this because it relies on disclosed data.
 
-Sentinel's `coordinated_pump.py` specifically targets this evasion strategy by analyzing **account-level buying coordination across independently small orders** — aggregating the pattern that is individually below threshold but collectively revealing.
+NIRIKSHAK's `coordinated_pump.py` specifically targets this evasion strategy by analyzing **account-level buying coordination across independently small orders** — aggregating the pattern that is individually below threshold but collectively revealing.
 
 #### C — Generating Evidence SEBI Can Act On
 
-SEBI's enforcement process requires well-documented evidence. Currently, building this evidence package is largely manual. Sentinel's **draft SAR generator** (`sebi_report.py`) automatically compiles the surveillance evidence into an 8-section dossier matching the SEBI ISD format — including PFUTP regulation clause references, quantitative evidence summaries, and account network maps.
+SEBI's enforcement process requires well-documented evidence. Currently, building this evidence package is largely manual. NIRIKSHAK's **draft SAR generator** (`sebi_report.py`) automatically compiles the surveillance evidence into an 8-section dossier matching the SEBI ISD format — including PFUTP regulation clause references, quantitative evidence summaries, and account network maps.
 
 This doesn't replace analyst judgment, but it reduces the time from "alert fired" to "SEBI-ready filing" from weeks to hours.
 
 #### D — Providing a Restitution Baseline for Harmed Investors
 
-When manipulation is confirmed, victims currently have no systematic way to understand how much they were harmed. SEBI's disgorgement orders focus on what the manipulators gained, not what retail investors lost. Sentinel's **harm estimation engine** uses the academic event-study methodology (MacKinlay 1997) to reconstruct a counterfactual price path — what the scrip would have traded at without the manipulation — and estimate the harm to each trade that occurred at the inflated/deflated price.
+When manipulation is confirmed, victims currently have no systematic way to understand how much they were harmed. SEBI's disgorgement orders focus on what the manipulators gained, not what retail investors lost. NIRIKSHAK's **harm estimation engine** uses the academic event-study methodology (MacKinlay 1997) to reconstruct a counterfactual price path — what the scrip would have traded at without the manipulation — and estimate the harm to each trade that occurred at the inflated/deflated price.
 
 This gives harmed retail investors a principled, citable basis for understanding their loss, and gives regulators a cross-check on disgorgement calculations.
 
 #### E — Forcing Transparency About What Indian Surveillance Can and Cannot Do
 
-One of Sentinel's most important contributions is its **honest documentation of what public Indian market data allows and does not allow**:
+One of NIRIKSHAK's most important contributions is its **honest documentation of what public Indian market data allows and does not allow**:
 
 - Historical NSE order books: **not publicly available** (never published)
 - Historical option chain OI snapshots: **not publicly available**
 - Account-level historical trade data: **not publicly available** for manipulation cases designed to stay below bulk deal thresholds
 
-This honesty matters because it identifies precisely where regulatory data-sharing policy changes would have the most impact. A formal NSE/BSE data-sharing agreement with SEBI-registered surveillance tools would immediately unlock the account-level data that makes Sentinel's most powerful detectors testable.
+This honesty matters because it identifies precisely where regulatory data-sharing policy changes would have the most impact. A formal NSE/BSE data-sharing agreement with SEBI-registered surveillance tools would immediately unlock the account-level data that makes NIRIKSHAK's most powerful detectors testable.
 
 ### 2.3 The Market Integrity Effect
 
-Markets where manipulation is detected quickly and reliably become less attractive targets for manipulators. If Sentinel (or systems like it) were deployed at scale:
+Markets where manipulation is detected quickly and reliably become less attractive targets for manipulators. If NIRIKSHAK (or systems like it) were deployed at scale:
 
 1. **Cost of manipulation rises** — the window between manipulation start and detection shrinks, reducing the profit opportunity
 2. **Small-cap liquidity improves** — retail investors currently avoid small-cap stocks precisely because they know they are manipulation targets; reliable surveillance reduces this risk premium
@@ -142,7 +142,7 @@ Markets where manipulation is detected quickly and reliably become less attracti
 
 ## 3. Real SEBI Cases: The Original Motivation
 
-Sentinel was built against three real, publicly verifiable SEBI enforcement cases. These are not hypothetical scenarios — they are documented in SEBI's enforcement order database, verifiable at [sebi.gov.in/enforcement/orders.html](https://www.sebi.gov.in/enforcement/orders.html).
+NIRIKSHAK was built against three real, publicly verifiable SEBI enforcement cases. These are not hypothetical scenarios — they are documented in SEBI's enforcement order database, verifiable at [sebi.gov.in/enforcement/orders.html](https://www.sebi.gov.in/enforcement/orders.html).
 
 These cases are why this project needs to move forward, and they define exactly what capabilities the next phase must deliver.
 
@@ -166,17 +166,17 @@ A network of 20 trading accounts, managed by three individuals, engaged in a sys
 - The scrip's price rose **approximately 113%** over 5 months (Rs. 44 → Rs. 93.80)
 - Retail investors who bought into this "story" were left holding shares at artificially inflated prices when the network stopped supporting the price
 
-#### Why This Case Defines What Sentinel Must Do
+#### Why This Case Defines What NIRIKSHAK Must Do
 
 Circular trading is **exactly** what `app/detection/circular_trading.py` is designed to detect. The algorithm works: given account-level trade data, it builds a directed graph and finds closed rings using Johnson's algorithm. For the KIL case, the 20-account ring would produce textbook cycle patterns.
 
-**The problem**: The scrip traded on BSE. Sentinel's current data pipeline fetches NSE bhavcopy. The scrip is confirmed absent from NSE archives (log-verified: `backtest/results/KIL-2019_diagnostic_v2.log`). Additionally, account-level historical trade data is not publicly available for BSE.
+**The problem**: The scrip traded on BSE. NIRIKSHAK's current data pipeline fetches NSE bhavcopy. The scrip is confirmed absent from NSE archives (log-verified: `backtest/results/KIL-2019_diagnostic_v2.log`). Additionally, account-level historical trade data is not publicly available for BSE.
 
 **What needs to happen for this case to be fully testable**:
 1. Build a BSE bhavcopy fetcher (`www.bseindia.com/download/BhavCopy/`)
 2. Obtain a formal data agreement with BSE for account-level historical trades, or obtain this via SEBI's investigation powers
 
-**What Sentinel established about this case**:
+**What NIRIKSHAK established about this case**:
 - The case is on the harm estimation allow-list (SEBI adjudication legally confirmed manipulation occurred)
 - The guard system correctly approves harm estimation for this case
 - Once BSE price data is available, the market-model event study can reconstruct the counterfactual price path for the 113% price rise and estimate harm to every retail investor who bought during August–December 2019
@@ -212,7 +212,7 @@ This is arguably the most complex and revealing case in the catalog — it shows
 
 **Why Rs. 143.79 crore matters**: This is confirmed disgorgement — what the manipulators *made*. The harm to retail investors who bought at inflated prices is likely significantly higher. Sentinel's harm estimation engine, once BSE data is available, can reconstruct that retail harm figure with 95% confidence intervals.
 
-#### What Sentinel Established About This Case
+#### What NIRIKSHAK Established About This Case
 
 Through 1,900+ real NSE archive fetches:
 
@@ -243,9 +243,9 @@ Cross-referenced against NSE's `EQUITY_L.csv` (2,570 currently-listed symbols): 
 
 A group of connected clients, trading through various BSE members, generated trades among themselves that represented approximately **71% of gross market volumes** in the Gravity India scrip during the period. This is textbook circular trading taken to an extreme: more than two-thirds of all observable market activity in the scrip was manufactured.
 
-**Historical significance**: This case predates Sentinel's scope (manipulation in 2003, digital archives unreliable for pre-2007 dates), but it is included because it illustrates the **longevity** of this manipulation pattern. The same circular trading technique identified in 2003 was used in the KIL case in 2019 — sixteen years later. The pattern is persistent because it works and because it is difficult to detect without account-level data.
+**Historical significance**: This case predates NIRIKSHAK's scope (manipulation in 2003, digital archives unreliable for pre-2007 dates), but it is included because it illustrates the **longevity** of this manipulation pattern. The same circular trading technique identified in 2003 was used in the KIL case in 2019 — sixteen years later. The pattern is persistent because it works and because it is difficult to detect without account-level data.
 
-**Why this case matters for Sentinel's future**: When Sentinel's circular trading detector is eventually validated against real account-level data, GIL (or similar well-documented BSE cases) should be in the validation set. The detector's Johnson's algorithm would have found the 71% volume cycle immediately given the trade data.
+**Why this case matters for NIRIKSHAK's future**: When NIRIKSHAK's circular trading detector is eventually validated against real account-level data, GIL (or similar well-documented BSE cases) should be in the validation set. The detector's Johnson's algorithm would have found the 71% volume cycle immediately given the trade data.
 
 ---
 
@@ -258,7 +258,7 @@ A group of connected clients, trading through various BSE members, generated tra
 | Harm estimation (once data available) | ✅ Ready (guard-approved) | ✅ Ready (guard-approved) | ✅ Ready (guard-approved) |
 | Full circular trading / pump detector | ✅ Algorithm ready | ✅ Algorithm ready | ✅ Algorithm ready |
 
-**Every single real SEBI case that Sentinel was designed to validate requires BSE data access.** This is the clearest possible statement of what needs to happen next.
+**Every single real SEBI case that NIRIKSHAK was designed to validate requires BSE data access.** This is the clearest possible statement of what needs to happen next.
 
 ---
 
@@ -577,17 +577,20 @@ Located in [`app/ml/`](app/ml/). A transparent dual-scoring framework — not a 
 
 **Schema versioning**: Models trained on `SCHEMA_VERSION = 1` features reject feature vectors from a different version at load time, preventing silent feature drift in production — a common silent failure mode in production ML systems.
 
-### 6.2 Isolation Forest — `scorer.py`
+### 6.2 Isolation Forest & Honest Score Reporting — `ohlcv_scorer.py`
 
-**Why Isolation Forest**: Confirmed manipulation labels are unavailable for Indian market data. Traditional supervised classification (requires labeled positive/negative examples) cannot be used. Isolation Forest partitions the feature space using random trees; anomalies — which differ structurally from normal trading patterns — are isolated with fewer cuts. It requires no positive examples.
+**Why Isolation Forest**: Confirmed manipulation labels are unavailable for Indian market data. Traditional supervised classification (which requires labeled positive/negative examples) cannot be reliably trained without label leakage. Isolation Forest partitions the continuous feature space; anomalies — which differ structurally from normal trading patterns — are isolated with fewer cuts. It requires no ground-truth positive examples.
 
-**Dual scoring**:
-```
-final_score = 0.50 × isolation_forest_score +
-              0.50 × expert_weighted_baseline_score
-```
+**Separate Score Presentation (No Blended Opacity)**:
+To preserve complete transparency and avoid misleading claims:
+- **Anomaly Score**: Isolation Forest percentile relative to historical sessions. Displays `—` when in heuristic-only mode.
+- **Rule Score**: Deterministic weighted heuristic detector score based on price z-scores, volume spikes, and pattern geometries.
+- **No False Confidence**: We strictly never blend these into an opaque single score or label any output as a "manipulation probability".
 
-The expert baseline is a deterministic weighted combination of detector scores — it ensures the system remains fully functional before model training data accumulates.
+**Adversarial Noise Calibration**:
+- Calibrated against 300 non-manipulated synthetic series using heavy-tailed Student-t ($df=4$, $\sigma=0.8\%$/day) and lognormal volume ($\sigma=0.35$).
+- With `zscore_medium = 4.0`, the false-alert rate on pure noise is **4.3%** (comfortably within the $\le 5\%$ budget).
+- 100% of pump probes (+9% return, 12× volume) remain detected.
 
 > **Mandatory disclaimer on every alert explanation**: *"This is an anomaly score, NOT a manipulation probability or legal determination."*
 
@@ -618,7 +621,7 @@ The expert baseline is a deterministic weighted combination of detector scores �
        └────────┘
 ```
 
-**Deduplication**: A `UNIQUE` database constraint on `(instrument_id, pattern_type, window_start)` prevents duplicate alerts from concurrent detection runs. This is TOCTOU-safe — the database constraint rejects the second insert at the DB level, not the application level. Verified in `tests/stress/test_concurrent_access.py`.
+**Deduplication**: Alerts are deduplicated on `(instrument_id, pattern_type, event_date)` with `event_date` defined as a strict `NOT NULL` trading date. Alert generation routes through atomic upsert (`create_or_update_alert`) that catches concurrent `IntegrityError` race conditions, updating `occurrences` and `last_seen_at` without duplicate insertions. Verified across 50/50 consecutive concurrent stress test runs in `tests/stress/test_concurrent_access.py`.
 
 ### 7.2 Three-Tier Escalation
 
@@ -672,7 +675,7 @@ Section 8: Compliance Sign-off
   └── Submission checklist (SEBI SCORES portal)
 ```
 
-> **Sentinel does not auto-file with SEBI.** Every draft SAR requires analyst verification and authorized compliance personnel sign-off before any submission.
+> **NIRIKSHAK does not auto-file with SEBI.** Every draft SAR requires analyst verification and authorized compliance personnel sign-off before any submission.
 
 ---
 
@@ -721,7 +724,7 @@ Located in [`app/harm_estimation/`](app/harm_estimation/). This is the most ethi
 
 When SEBI issues a disgorgement order, it calculates what the **manipulators gained**. What is almost never calculated is what **retail investors lost** — the harm to every person who bought at an artificially inflated price (or sold at an artificially deflated one) during the manipulation window.
 
-Sentinel's harm engine fills that gap. For every retail trade that occurred during a confirmed manipulation window, it estimates:
+NIRIKSHAK's harm engine fills that gap. For every retail trade that occurred during a confirmed manipulation window, it estimates:
 
 1. What price the stock *would have* traded at without manipulation (counterfactual path)
 2. How much that specific trade cost the investor relative to the counterfactual
@@ -1070,7 +1073,11 @@ python -m venv .venv
 # Linux / macOS
 source .venv/bin/activate
 
+# Core dependencies (FastAPI, SQLAlchemy, scikit-learn, etc.)
 pip install -r requirements.txt
+
+# Optional broker SDKs (Fyers API v3, Zerodha Kite Connect)
+pip install -r requirements-brokers.txt
 ```
 
 ### Environment Configuration
@@ -1081,7 +1088,14 @@ Create a `.env` file in the project root:
 # Required: cryptographic salt for account ID pseudonymization
 ACCOUNT_ID_SALT=your-cryptographic-salt-here-minimum-32-chars
 
-# Optional: Zerodha Kite Connect for live broker order stream
+# Optional: Fyers API v3 configuration for live surveillance
+FYERS_APP_ID=your_fyers_app_id
+FYERS_SECRET_KEY=your_fyers_secret_key
+FYERS_REDIRECT_URI=https://trade.fyers.in/api-login/redirect-uri/index.html
+# Token storage path defaults to ~/.sentinel/fyers_token.json (never committed)
+SENTINEL_TOKEN_PATH=~/.sentinel/fyers_token.json
+
+# Optional: Zerodha Kite Connect for broker order stream
 KITE_API_KEY=your_api_key
 KITE_ACCESS_TOKEN=your_access_token
 ```
@@ -1126,20 +1140,19 @@ python -m backtest.run_backtest
 
 ## 17. Test Suite
 
-**200 tests — all passing.**
+**496 tests — all passing (4 deselected, 0 failures).**
 
 ```bash
 # Full suite
-pytest
+pytest tests/ -q --tb=short
 
-# Specific suite
+# Specific suites
+pytest tests/test_alert_rate_noise.py -v
+pytest tests/test_phase7_frontend_e13_e14.py -v
 pytest tests/test_harm_estimation.py -v
 pytest tests/test_detection_phase2.py -v
 
-# Live network tests (NSE archive fetches — excluded by default in CI)
-pytest -m live
-
-# Stress / concurrency
+# Stress / concurrency tests
 pytest tests/stress/ -v
 
 # With coverage
@@ -1148,14 +1161,30 @@ pytest --cov=app --cov-report=html
 
 | Test File | Count | What It Tests |
 |---|---|---|
-| `test_ingest_phase1.py` | 30 | NSE bhavcopy parsing, bulk deals, option chain, broker WS, error hierarchy |
-| `test_detection_phase2.py` | 19 | Circular trading (Johnson's cycles), coordinated pump (multi-account) |
-| `test_detection_phase3.py` | 27 | OI concentration, IV decoupling, cost-of-carry, Max-Pain, pinning detection |
-| `test_ml_phase4.py` | 29 | 20-feature extraction, schema versioning, Isolation Forest, dual scoring |
-| `test_alerts_phase5.py` | 29 | Alert state machine, TOCTOU deduplication, SAR formatting, escalation |
-| `test_security_pii.py` | 37 | SHA-256 hashing, dual-column, evidence access audit, 7-year retention |
-| `test_harm_estimation.py` | 29 | Guard allow-list, OLS market model, known-answer CAR recovery, trade harm |
-| `test_resilience.py` | ~20 | Network retry/backoff, 403 handling, concurrent DB access |
+| `test_alert_rate_noise.py` | 3 | False-alert rate on 300 heavy-tailed noise series ($\le 5\%$ budget, verified at 4.3%), pump sensitivity |
+| `test_phase7_frontend_e13_e14.py` | 22 | UI honesty regression guards (PFUTP clause accuracy, title overclaim absence, Anomaly vs Rule score) |
+| `test_phase6_frontend_honesty.py` | 15 | Static dashboard honesty checks (no fabricated latencies, no fake 0.0% FP claims) |
+| `test_phase7_requirements.py` | 59 | Package dependency resolution, split broker SDK requirements, version constraint safety |
+| `test_phase8_backtest.py` | 4 | Backtest runner execution with synthetic OHLCV baseline (>0 symbol-days verified) |
+| `test_repo_cleanliness.py` | 1 | Git working tree cleanliness regression assertion after test suite execution |
+| `test_security_secrets.py` | 2 | Automated scanner ensuring no live tokens, secrets, or broker IDs are committed |
+| `test_security_pii.py` | 37 | Salted SHA-256 pseudonymization, dual-column storage, evidence audit log, 7-year retention |
+| `test_alerts_phase5.py` | 29 | Alert state machine, NOT NULL event_date deduplication, draft SAR generation |
+| `test_detection_phase2.py` | 19 | Multi-account buy bursts, circular trade rings (Johnson's cycles) |
+| `test_detection_phase3.py` | 27 | Derivatives manipulation (OI concentration, IV decoupling, basis distortion, option pinning) |
+| `test_phase3_derivative_detectors.py` | 19 | Additional derivative detector unit coverage |
+| `test_phase1_detection.py` | 19 | OHLCV price z-score, volume spike, and momentum reversal units |
+| `test_phase4_provenance.py` | 24 | Threshold registry provenance, UNVALIDATED_HEURISTIC enforcement |
+| `test_phase5_reports.py` | 26 | SEBI format draft SAR generation and compliance sign-off structure |
+| `test_harm_estimation.py` | 29 | MacKinlay OLS market model, 95% CI CAR recovery, allow-list guardrails |
+| `test_ingest_phase1.py` | 34 | Ingestion exception hierarchy, bhavcopy parsing, option chain normalization |
+| `test_ml_phase4.py` | 29 | Feature vector versioning, Isolation Forest scoring, metadata persistence |
+| `test_resilience.py` | 45 | Network backoff, circuit breaking, database retry mechanisms |
+| `stress/test_concurrent_access.py` | 4 | Multi-threaded concurrent alert upsert race conditions (passes 50/50 runs) |
+| `stress/test_database_failure.py` | 6 | Rollback safety, connection interruption, atomic transaction commits |
+| `stress/test_detector_edge_cases.py` | 29 | Illiquid, zero-volume, single-trade, and NaN mathematical edge cases |
+| `stress/test_malformed_data.py` | 15 | Corrupt JSON, truncated responses, malformed CSV protection |
+| `stress/test_ingestion_volume.py` | 3 | High-volume order stream throughput and memory safety |
 
 ### Known-Answer Validation (Harm Engine)
 
@@ -1228,7 +1257,7 @@ No threshold is ever presented as empirically validated unless it has been calib
 **Fix 2: NSE/BSE Formal Data Agreement**
 - Source: Exchange data licensing program / SEBI integration pathway
 - Impact: Unlocks account-level historical trade data → full validation of circular trading and pump detectors
-- Impact: Transforms Sentinel from "validated on synthetic data" to "validated on real manipulation cases"
+- Impact: Transforms NIRIKSHAK from "validated on synthetic data" to "validated on real manipulation cases"
 
 ### Roadmap
 
@@ -1288,4 +1317,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-> **Final Disclaimer**: Sentinel is a research and proof-of-concept platform. Its outputs do not constitute financial advice, legal determinations, or regulatory findings. All detection scores are statistical anomaly indicators requiring analyst review. SEBI case summaries are the authors' own paraphrases for research context — they are not reproductions of SEBI's findings. Any operational use requires independent validation, expert review, compliance with SEBI regulations, and appropriate regulatory authorization.
+> **Final Disclaimer**: NIRIKSHAK is a research and proof-of-concept platform. Its outputs do not constitute financial advice, legal determinations, or regulatory findings. All detection scores are statistical anomaly indicators requiring analyst review. SEBI case summaries are the authors' own paraphrases for research context — they are not reproductions of SEBI's findings. Any operational use requires independent validation, expert review, compliance with SEBI regulations, and appropriate regulatory authorization.
